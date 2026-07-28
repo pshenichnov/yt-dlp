@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://youtube-processing.local/contracts/extract-video-command.v1.schema.json",
+  "title": "Extract video command v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "messageId",
+    "correlationId",
+    "causationId",
+    "messageType",
+    "occurredAt",
+    "payload"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "messageId": { "type": "string", "format": "uuid" },
+    "correlationId": { "type": "string", "format": "uuid" },
+    "causationId": {
+      "oneOf": [
+        { "type": "string", "format": "uuid" },
+        { "type": "null" }
+      ]
+    },
+    "messageType": { "const": "extract-video" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jobId",
+        "analysisId",
+        "videoId",
+        "originalInput",
+        "preferredLanguage"
+      ],
+      "properties": {
+        "jobId": { "type": "string", "format": "uuid" },
+        "analysisId": { "type": "string", "format": "uuid" },
+        "videoId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{11}$"
+        },
+        "originalInput": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "preferredLanguage": {
+          "oneOf": [
+            { "type": "string", "maxLength": 32 },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}

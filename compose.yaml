@@ -1,0 +1,174 @@
+x-dotnet-environment: &dotnet-environment
+  RabbitMq__Host: rabbitmq
+  RabbitMq__VirtualHost: /
+  RabbitMq__Username: ${RABBITMQ_USERNAME:-youtube}
+  RabbitMq__Password: ${RABBITMQ_PASSWORD:-youtube_dev}
+  Database__ApplyMigrations: "true"
+
+x-service-dependencies: &service-dependencies
+  postgres:
+    condition: service_healthy
+  rabbitmq:
+    condition: service_healthy
+  minio:
+    condition: service_healthy
+  minio-init:
+    condition: service_completed_successfully
+
+services:
+  postgres:
+    image: postgres:18.4
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-youtube}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-youtube_dev}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./infra/postgres/init-databases.sql:/docker-entrypoint-initdb.d/10-databases.sql:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-youtube} -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:4.3.4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-youtube}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-youtube_dev}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-youtube}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-youtube_dev_secret}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        mc alias set local http://minio:9000 "$${S3_ACCESS_KEY}" "$${S3_SECRET_KEY}"
+        mc mb --ignore-existing local/youtube-processing
+        mc anonymous set none local/youtube-processing
+        mc ilm rule add --expire-days 30 local/youtube-processing || true
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-youtube}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-youtube_dev_secret}
+
+  api:
+    build:
+      context: .
+      dockerfile: src/Api/YouTubeProcessing.Api/Dockerfile
+    environment:
+      <<: *dotnet-environment
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__ApiDatabase: Host=postgres;Port=5432;Database=youtube_api;Username=${POSTGRES_USER:-youtube};Password=${POSTGRES_PASSWORD:-youtube_dev}
+      Platform__ApiKey: ${API_KEY:-replace-this-development-key}
+      Platform__Blob__Endpoint: http://minio:9000
+      Platform__Blob__AccessKey: ${S3_ACCESS_KEY:-youtube}
+      Platform__Blob__SecretKey: ${S3_SECRET_KEY:-youtube_dev_secret}
+      Platform__Blob__Bucket: youtube-processing
+    depends_on: *service-dependencies
+    ports:
+      - "${API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: src/Orchestrator/YouTubeProcessing.Orchestrator/Dockerfile
+    environment:
+      <<: *dotnet-environment
+      ConnectionStrings__OrchestratorDatabase: Host=postgres;Port=5432;Database=youtube_orchestrator;Username=${POSTGRES_USER:-youtube};Password=${POSTGRES_PASSWORD:-youtube_dev}
+      Workflow__AnalysisEnabled: "${ANALYSIS_ENABLED:-false}"
+    depends_on: *service-dependencies
+    restart: unless-stopped
+
+  extractor:
+    build:
+      context: .
+      dockerfile: src/Extractor/Dockerfile
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USERNAME:-youtube}:${RABBITMQ_PASSWORD:-youtube_dev}@rabbitmq:5672/
+      POSTGRES_DSN: postgresql://${POSTGRES_USER:-youtube}:${POSTGRES_PASSWORD:-youtube_dev}@postgres:5432/youtube_extractor
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-youtube}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-youtube_dev_secret}
+      S3_BUCKET: youtube-processing
+      EXTRACTOR_CONCURRENCY: ${EXTRACTOR_CONCURRENCY:-2}
+      MAX_VIDEO_DURATION_SECONDS: 14400
+      MAX_CAPTION_BYTES: 10485760
+      MAX_THUMBNAIL_BYTES: 10485760
+    depends_on: *service-dependencies
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    restart: unless-stopped
+
+#  analyzer:
+#    profiles: ["analysis"]
+#    build:
+#      context: .
+#      dockerfile: src/Analyzer/YouTubeProcessing.Analyzer/Dockerfile
+#    environment:
+#      <<: *dotnet-environment
+#      ConnectionStrings__AnalyzerDatabase: Host=postgres;Port=5432;Database=youtube_analyzer;Username=${POSTGRES_USER:-youtube};Password=${POSTGRES_PASSWORD:-youtube_dev}
+#      Analyzer__Provider: ${ANALYZER_PROVIDER:-deterministic}
+#      Analyzer__OllamaEndpoint: http://ollama:11434
+#      Analyzer__Model: ${OLLAMA_MODEL:-llama3.2:3b}
+#      Analyzer__Blob__Endpoint: http://minio:9000
+#      Analyzer__Blob__AccessKey: ${S3_ACCESS_KEY:-youtube}
+#      Analyzer__Blob__SecretKey: ${S3_SECRET_KEY:-youtube_dev_secret}
+#      Analyzer__Blob__Bucket: youtube-processing
+#    depends_on: *service-dependencies
+#    restart: unless-stopped
+
+#  ollama:
+#    image: ollama/ollama:0.12.3
+#    profiles: ["llm"]
+#    volumes:
+#      - ollama-data:/root/.ollama
+#    ports:
+#      - "${OLLAMA_PORT:-11434}:11434"
+#    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  minio-data:
+  ollama-data:

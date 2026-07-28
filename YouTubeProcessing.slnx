@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Analyzer/">
+    <Project Path="src/Analyzer/YouTubeProcessing.Analyzer/YouTubeProcessing.Analyzer.csproj" />
+  </Folder>
+  <Folder Name="/src/Api/">
+    <Project Path="src/Api/YouTubeProcessing.Api/YouTubeProcessing.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/YouTubeProcessing.Contracts/YouTubeProcessing.Contracts.csproj" />
+    <Project Path="src/BuildingBlocks/YouTubeProcessing.Observability/YouTubeProcessing.Observability.csproj" />
+  </Folder>
+  <Folder Name="/src/Orchestrator/">
+    <Project Path="src/Orchestrator/YouTubeProcessing.Orchestrator/YouTubeProcessing.Orchestrator.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/Unit/">
+    <Project Path="tests/Unit/YouTubeProcessing.Analyzer.Tests/YouTubeProcessing.Analyzer.Tests.csproj" />
+    <Project Path="tests/Unit/YouTubeProcessing.Api.Tests/YouTubeProcessing.Api.Tests.csproj" />
+    <Project Path="tests/Unit/YouTubeProcessing.Orchestrator.Tests/YouTubeProcessing.Orchestrator.Tests.csproj" />
+  </Folder>
+</Solution>

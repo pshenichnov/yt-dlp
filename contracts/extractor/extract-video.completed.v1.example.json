@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1",
+  "messageId": "ae912894-46d6-4381-a77a-f20f35b8f3b7",
+  "correlationId": "c25421a3-2854-4abf-a9a0-170e1670e144",
+  "causationId": "24840589-f1a6-494a-839c-bb1fc4e11575",
+  "messageType": "extract-video-completed",
+  "occurredAt": "2026-07-25T18:00:20Z",
+  "payload": {
+    "jobId": "c25421a3-2854-4abf-a9a0-170e1670e144",
+    "analysisId": "92535466-fe42-4fc0-bc48-0b4cc920c8b1",
+    "video": {
+      "videoId": "dQw4w9WgXcQ",
+      "title": "Example video",
+      "channelId": "UC-example",
+      "channelName": "Example channel",
+      "publishedAt": "2026-07-01T00:00:00Z",
+      "durationSeconds": 212,
+      "viewCount": 1000,
+      "likeCount": 50,
+      "description": "Example",
+      "webpageUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    },
+    "transcript": {
+      "artifactId": "a39d9921-d869-41d8-9b5d-991364a42a0c",
+      "kind": "transcript",
+      "objectKey": "analyses/92535466-fe42-4fc0-bc48-0b4cc920c8b1/transcript.txt",
+      "contentType": "text/plain; charset=utf-8",
+      "sizeBytes": 1024,
+      "sha256": "example"
+    },
+    "originalCaption": null,
+    "thumbnail": {
+      "artifactId": "f294a990-e3c8-48f6-8225-f92457195ef6",
+      "kind": "thumbnail",
+      "objectKey": "analyses/92535466-fe42-4fc0-bc48-0b4cc920c8b1/thumbnail.jpg",
+      "contentType": "image/jpeg",
+      "sizeBytes": 2048,
+      "sha256": "example"
+    }
+  }
+}

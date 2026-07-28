@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "youtube-processing-extractor"
+version = "0.1.0"
+description = "RabbitMQ-driven yt-dlp metadata, caption, and thumbnail extractor"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+  "aio-pika==9.5.7",
+  "asyncpg==0.30.0",
+  "boto3==1.39.13",
+  "pydantic==2.11.7",
+  "webvtt-py==0.5.1",
+  "yt-dlp==2026.7.4"
+]
+
+[project.optional-dependencies]
+test = [
+  "jsonschema==4.25.1",
+  "pytest==8.4.1",
+  "pytest-asyncio==1.1.0"
+]
+
+[project.scripts]
+youtube-extractor = "youtube_extractor.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["youtube_extractor*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

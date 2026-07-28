@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: youtube-processing-extractor
+Version: 0.1.0
+Summary: RabbitMQ-driven yt-dlp metadata, caption, and thumbnail extractor
+Requires-Python: <3.13,>=3.10
+Requires-Dist: aio-pika==9.5.7
+Requires-Dist: asyncpg==0.30.0
+Requires-Dist: boto3==1.39.13
+Requires-Dist: pydantic==2.11.7
+Requires-Dist: webvtt-py==0.5.1
+Requires-Dist: yt-dlp==2026.7.4
+Provides-Extra: test
+Requires-Dist: jsonschema==4.25.1; extra == "test"
+Requires-Dist: pytest==8.4.1; extra == "test"
+Requires-Dist: pytest-asyncio==1.1.0; extra == "test"

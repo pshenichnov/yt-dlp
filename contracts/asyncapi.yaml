@@ -1,0 +1,41 @@
+asyncapi: 3.0.0
+info:
+  title: YouTube Processing Extractor Boundary
+  version: 1.0.0
+  description: Raw JSON channels between MassTransit and the Python extractor.
+servers:
+  local:
+    host: rabbitmq:5672
+    protocol: amqp
+channels:
+  extractorCommands:
+    address: youtube.extract-video.commands.v1
+    messages:
+      extractVideo:
+        $ref: '#/components/messages/ExtractVideo'
+  extractorEvents:
+    address: youtube.extract-video.events.v1
+    messages:
+      extractorEvent:
+        $ref: '#/components/messages/ExtractorEvent'
+operations:
+  consumeExtractionCommand:
+    action: receive
+    channel:
+      $ref: '#/channels/extractorCommands'
+  publishExtractionEvent:
+    action: send
+    channel:
+      $ref: '#/channels/extractorEvents'
+components:
+  messages:
+    ExtractVideo:
+      name: extract-video
+      contentType: application/json
+      payload:
+        $ref: './json-schema/extract-video-command.v1.schema.json'
+    ExtractorEvent:
+      name: extractor-event-v1
+      contentType: application/json
+      payload:
+        $ref: './json-schema/extractor-event.v1.schema.json'

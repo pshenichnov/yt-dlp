@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.302
+
+      - name: Restore .NET tools and packages
+        run: |
+          dotnet tool restore
+          dotnet restore YouTubeProcessing.slnx
+
+      - name: Build .NET
+        run: dotnet build YouTubeProcessing.slnx --no-restore --configuration Release
+
+      - name: Test .NET
+        run: dotnet test YouTubeProcessing.slnx --no-build --configuration Release
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: src/Extractor/pyproject.toml
+
+      - name: Install and test extractor
+        run: |
+          python -m pip install -e 'src/Extractor[test]'
+          python -m compileall -q src/Extractor/youtube_extractor
+          python -m pytest src/Extractor/tests -q
+
+      - name: Validate Compose
+        run: docker compose config --quiet

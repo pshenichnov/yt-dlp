@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://youtube-processing.local/contracts/extractor-event.v1.schema.json",
+  "title": "Extractor terminal event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "messageId",
+    "correlationId",
+    "causationId",
+    "messageType",
+    "occurredAt",
+    "payload"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "messageId": { "type": "string", "format": "uuid" },
+    "correlationId": { "type": "string", "format": "uuid" },
+    "causationId": { "type": "string", "format": "uuid" },
+    "messageType": {
+      "enum": ["extract-video-completed", "extract-video-failed"]
+    },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "payload": {
+      "type": "object",
+      "required": ["jobId", "analysisId"],
+      "properties": {
+        "jobId": { "type": "string", "format": "uuid" },
+        "analysisId": { "type": "string", "format": "uuid" }
+      }
+    }
+  }
+}

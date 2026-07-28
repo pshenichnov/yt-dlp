@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1",
+  "messageId": "7bd28c56-84ce-4ae5-aefc-67a26ea9ee08",
+  "correlationId": "c25421a3-2854-4abf-a9a0-170e1670e144",
+  "causationId": "24840589-f1a6-494a-839c-bb1fc4e11575",
+  "messageType": "extract-video-failed",
+  "occurredAt": "2026-07-25T18:00:20Z",
+  "payload": {
+    "jobId": "c25421a3-2854-4abf-a9a0-170e1670e144",
+    "analysisId": "92535466-fe42-4fc0-bc48-0b4cc920c8b1",
+    "errorCode": "captions_unavailable",
+    "errorMessage": "No manual or automatic captions were available.",
+    "isTransient": false
+  }
+}

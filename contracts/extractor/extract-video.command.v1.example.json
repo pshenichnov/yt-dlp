@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1",
+  "messageId": "24840589-f1a6-494a-839c-bb1fc4e11575",
+  "correlationId": "c25421a3-2854-4abf-a9a0-170e1670e144",
+  "causationId": "e6791d4d-ee9a-4698-be90-b4b9709f25cf",
+  "messageType": "extract-video",
+  "occurredAt": "2026-07-25T18:00:00Z",
+  "payload": {
+    "jobId": "c25421a3-2854-4abf-a9a0-170e1670e144",
+    "analysisId": "92535466-fe42-4fc0-bc48-0b4cc920c8b1",
+    "videoId": "dQw4w9WgXcQ",
+    "originalInput": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "preferredLanguage": "en"
+  }
+}
