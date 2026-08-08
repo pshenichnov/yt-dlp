@@ -62,7 +62,8 @@ Poll the returned `statusUrl`; when it reports `completed`, request the
 
 Health endpoints are `GET /health/live` and `GET /health/ready`. Interactive
 Swagger UI is available at `/swagger`, and the generated OpenAPI document is
-available at `/openapi/v1.json`.
+available at `/openapi/v1.json`. In Swagger UI, select **Authorize** and enter
+the configured API key; Swagger will send it in the `X-Api-Key` header.
 
 ## Verify
 

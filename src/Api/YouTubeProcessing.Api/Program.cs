@@ -23,7 +23,8 @@ builder.Services
     .ValidateOnStart();
 
 builder.Services.AddProblemDetails();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+    options.AddDocumentTransformer<ApiKeyOpenApiDocumentTransformer>());
 builder.Services.AddPlatformObservability(builder.Configuration, "youtube-processing-api");
 builder.Services.AddDbContext<ApiDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("ApiDatabase")));

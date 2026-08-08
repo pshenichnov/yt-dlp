@@ -146,8 +146,7 @@ services:
 #      context: .
 #      dockerfile: src/Analyzer/YouTubeProcessing.Analyzer/Dockerfile
 #    environment:
-#      <<: *dotnet-environment
-#      ConnectionStrings__AnalyzerDatabase: Host=postgres;Port=5432;Database=youtube_analyzer;Username=${POSTGRES_USER:-youtube};Password=${POSTGRES_PASSWORD:-youtube_dev}
+#      <<: *dotnet-environmen      ConnectionStrings__AnalyzerDatabase: Host=postgres;Port=5432;Database=youtube_analyzer;Username=${POSTGRES_USER:-youtube};Password=${POSTGRES_PASSWORD:-youtube_dev}
 #      Analyzer__Provider: ${ANALYZER_PROVIDER:-deterministic}
 #      Analyzer__OllamaEndpoint: http://ollama:11434
 #      Analyzer__Model: ${OLLAMA_MODEL:-llama3.2:3b}

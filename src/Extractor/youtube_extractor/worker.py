@@ -49,10 +49,18 @@ class ExtractorWorker:
 
         consume_channel = await self._connection.channel()
         await consume_channel.set_qos(prefetch_count=self._settings.concurrency)
+        command_exchange = await consume_channel.declare_exchange(
+            self._settings.command_queue,
+            ExchangeType.FANOUT,
+            durable=True,
+        )
         command_queue = await consume_channel.declare_queue(
             self._settings.command_queue,
             durable=True,
             arguments={"x-queue-type": "quorum"},
+        )
+        await command_queue.bind(
+            command_exchange, routing_key=self._settings.command_queue
         )
 
         self._publish_channel = await self._connection.channel(

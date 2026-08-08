@@ -39,7 +39,7 @@ public sealed class VideoAnalysisRequestedConsumer(
             publish => publish.CorrelationId = message.JobId);
 
         var endpoint = await sender.GetSendEndpoint(
-            new Uri($"queue:{QueueNames.ExtractorCommands}"));
+            new Uri($"exchange:{QueueNames.ExtractorCommands}"));
         await endpoint.Send(
             new IntegrationEnvelopeV1<ExtractVideoPayloadV1>(
                 "1",

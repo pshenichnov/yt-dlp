@@ -6,6 +6,8 @@ namespace YouTubeProcessing.Api.Infrastructure;
 
 public sealed class ApiKeyMiddleware(RequestDelegate next)
 {
+    public const string HeaderName = "X-Api-Key";
+
     public async Task InvokeAsync(HttpContext context, IOptions<PlatformOptions> options)
     {
         if (context.Request.Path.StartsWithSegments("/health") ||
@@ -16,7 +18,7 @@ public sealed class ApiKeyMiddleware(RequestDelegate next)
             return;
         }
 
-        var supplied = context.Request.Headers["X-Api-Key"].ToString();
+        var supplied = context.Request.Headers[HeaderName].ToString();
         var expected = options.Value.ApiKey;
         var valid = supplied.Length == expected.Length &&
                     CryptographicOperations.FixedTimeEquals(
@@ -29,7 +31,7 @@ public sealed class ApiKeyMiddleware(RequestDelegate next)
             await context.Response.WriteAsJsonAsync(new
             {
                 type = "https://httpstatuses.com/401",
-                title = "A valid X-Api-Key header is required.",
+                title = $"A valid {HeaderName} header is required.",
                 status = 401
             });
             return;

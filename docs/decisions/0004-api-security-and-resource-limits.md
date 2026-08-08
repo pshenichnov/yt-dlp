@@ -35,4 +35,3 @@ LLM. It needs authentication and resource limits before accepting work.
 - Adding multiple users later requires a stronger identity provider and
   per-subject authorization.
 - Limits are configurable but cannot be disabled with zero or negative values.
-

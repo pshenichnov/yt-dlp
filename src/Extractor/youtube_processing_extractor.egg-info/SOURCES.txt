@@ -1,6 +1,7 @@
 pyproject.toml
 tests/test_contracts.py
 tests/test_extractor.py
+tests/test_worker.py
 youtube_extractor/__init__.py
 youtube_extractor/config.py
 youtube_extractor/contracts.py
