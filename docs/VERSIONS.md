@@ -1,6 +1,6 @@
 # Version Matrix
 
-Last reviewed: August 8, 2026
+Last reviewed: November 11, 2026
 
 | Component | Pinned version | Notes |
 |---|---:|---|
@@ -12,9 +12,9 @@ Last reviewed: August 8, 2026
 | OpenTelemetry .NET | 1.17.0 | Hosting and instrumentation packages |
 | Microsoft.OpenApi | 2.11.0 | Patched 2.x line; fixes GHSA-v5pm-xwqc-g5wc |
 | AWS SDK for S3 .NET | 4.0.101.4 | S3-compatible artifact adapter |
-| Python | 3.12 | Extractor container |
+| Python | 3.12.16 | Extractor container and local development |
 | FFmpeg | 7.1.5 (Debian `7:7.1.5-0+deb13u1`) | Exact extractor image package |
-| yt-dlp | 2026.07.04 | Exact Python dependency |
+| yt-dlp | 2026.10.26 | Exact Python dependency |
 | aio-pika | 9.5.7 | RabbitMQ client |
 | asyncpg | 0.30.0 | Extractor persistence |
 | boto3 | 1.39.13 | S3 client |

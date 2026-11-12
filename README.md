@@ -18,7 +18,7 @@ database. MinIO is the local S3-compatible artifact store.
 ## Prerequisites
 
 - Docker with Compose v2
-- Or, for host development: .NET SDK 10.0.302 and Python 3.10–3.12
+- Or, for host development: .NET SDK 10.0.302 and Python 3.12
 
 ## Start locally
 
@@ -68,6 +68,11 @@ curl -i http://localhost:8080/api/v1/video-analyses \
 Poll the returned `statusUrl`; when it reports `completed`, request the
 `resultUrl`. Artifact links stream through the authenticated API.
 
+A local browser UI is available at `http://localhost:8080/`. Enter a YouTube
+video ID or URL and the configured API key to run a summary analysis and view
+the resulting thumbnail and description. The browser retains the API key only
+for the current tab.
+
 `GET /health` returns aggregate status for the API, PostgreSQL, RabbitMQ,
 MinIO, Orchestrator, Extractor, and the optional Analyzer. Worker status is
 derived from the required RabbitMQ queues and active consumer connections; a
@@ -85,7 +90,7 @@ dotnet restore YouTubeProcessing.slnx
 dotnet build YouTubeProcessing.slnx --no-restore
 dotnet test YouTubeProcessing.slnx --no-restore
 
-python3.10 -m venv .venv
+python3.12 -m venv .venv
 .venv/bin/python -m pip install -e 'src/Extractor[test]'
 .venv/bin/python -m pytest src/Extractor/tests
 

@@ -14,13 +14,12 @@ The repository needs a current, reproducible baseline independent of host tools.
 - Target .NET 10.
 - Pin the developer SDK with `global.json` to `10.0.302`.
 - Build and run .NET containers from the .NET 10 image family.
-- Target Python 3.12 in the extractor container and require Python 3.10 or newer
-  for local development.
+- Target Python 3.12 in the extractor container and for local development.
 - Pin Python dependencies with exact versions in the lock input.
 
 .NET 10 is the active LTS release and is supported through November 2028.
-Python 3.12 provides a longer support runway than using the minimum Python 3.10
-runtime.
+Using the same Python minor version locally and in the extractor container
+reduces environment-specific differences.
 
 ## Consequences
 

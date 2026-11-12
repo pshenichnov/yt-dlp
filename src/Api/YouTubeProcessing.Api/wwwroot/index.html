@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Create a concise AI summary from a YouTube video transcript.">
+  <title>Video Brief</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Video Brief home">
+      <span class="brand-mark" aria-hidden="true">▶</span>
+      <span>Video Brief</span>
+    </a>
+    <span class="local-badge">Local workspace</span>
+  </header>
+
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">Transcript-powered analysis</p>
+      <h1 id="page-title">Understand a video<br>without watching it first.</h1>
+      <p class="intro-copy">
+        Paste a YouTube video ID or URL. The platform extracts its captions and
+        asks Codex for a concise summary.
+      </p>
+    </section>
+
+    <section class="workspace" aria-label="Video analysis workspace">
+      <form id="analysis-form" class="analysis-form">
+        <div class="field field-wide">
+          <label for="video">YouTube video ID or URL</label>
+          <input
+            id="video"
+            name="video"
+            type="text"
+            placeholder="BifyQ6ppdLU"
+            autocomplete="off"
+            spellcheck="false"
+            required>
+        </div>
+
+        <div class="field">
+          <label for="api-key">API key</label>
+          <input
+            id="api-key"
+            name="api-key"
+            type="password"
+            placeholder="Your local API key"
+            autocomplete="off"
+            required>
+          <p class="field-note">Kept only in this browser tab.</p>
+        </div>
+
+        <button id="submit-button" type="submit">
+          <span>Run analysis</span>
+          <span aria-hidden="true">↗</span>
+        </button>
+      </form>
+
+      <div id="error-panel" class="error-panel" role="alert" hidden></div>
+
+      <section id="status-panel" class="status-panel" aria-live="polite" hidden>
+        <div class="status-heading">
+          <div>
+            <p class="status-label">Processing</p>
+            <p id="status-message" class="status-message">Preparing analysis…</p>
+          </div>
+          <span id="status-percent" class="status-percent">0%</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+      </section>
+
+      <article id="result-panel" class="result-panel" hidden>
+        <div class="thumbnail-frame">
+          <img id="thumbnail" alt="" hidden>
+          <div id="thumbnail-placeholder" class="thumbnail-placeholder">
+            Thumbnail unavailable
+          </div>
+        </div>
+
+        <div class="result-content">
+          <div class="result-meta">
+            <span id="provider-badge" class="provider-badge">Codex summary</span>
+            <span id="channel-name"></span>
+          </div>
+          <h2 id="video-title"></h2>
+          <p id="summary" class="summary"></p>
+          <a id="youtube-link" class="youtube-link" target="_blank" rel="noreferrer">
+            Watch on YouTube <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer>
+    Results and credentials stay within your locally running platform.
+  </footer>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

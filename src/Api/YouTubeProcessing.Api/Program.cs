@@ -126,6 +126,8 @@ builder.Services.AddRateLimiter(options =>
 var app = builder.Build();
 
 app.UseExceptionHandler();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseRateLimiter();
 app.UseMiddleware<ApiKeyMiddleware>();
 app.UseSwaggerUI(options =>

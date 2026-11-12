@@ -193,16 +193,30 @@ def vtt_to_text(path: Path) -> str:
 def vtt_to_transcript(path: Path) -> tuple[str, list[dict[str, str]]]:
     lines: list[str] = []
     segments: list[dict[str, str]] = []
-    previous = ""
+    transcript_words: list[str] = []
     for caption in webvtt.read(str(path)):
         text = " ".join(caption.text.replace("\n", " ").split())
-        if text and text != previous:
-            lines.append(text)
-            segments.append(
-                {"start": caption.start, "end": caption.end, "text": text}
-            )
-            previous = text
+        caption_words = text.split()
+        overlap = _suffix_prefix_overlap(transcript_words, caption_words)
+        novel_words = caption_words[overlap:]
+        if not novel_words:
+            continue
+
+        novel_text = " ".join(novel_words)
+        lines.append(novel_text)
+        segments.append(
+            {"start": caption.start, "end": caption.end, "text": novel_text}
+        )
+        transcript_words.extend(word.casefold() for word in novel_words)
     return "\n".join(lines) + ("\n" if lines else ""), segments
+
+
+def _suffix_prefix_overlap(existing: list[str], incoming: list[str]) -> int:
+    normalized_incoming = [word.casefold() for word in incoming]
+    for length in range(min(len(existing), len(incoming)), 0, -1):
+        if existing[-length:] == normalized_incoming[:length]:
+            return length
+    return 0
 
 
 def to_metadata(info: dict[str, Any], video_id: str) -> VideoMetadata:
