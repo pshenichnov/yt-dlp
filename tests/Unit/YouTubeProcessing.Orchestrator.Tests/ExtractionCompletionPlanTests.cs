@@ -10,7 +10,11 @@ public sealed class ExtractionCompletionPlanTests
         var extraction = CreateExtraction();
         var occurredAt = DateTimeOffset.UtcNow;
 
-        var plan = ExtractionCompletionPlan.Create(extraction, false, occurredAt);
+        var plan = ExtractionCompletionPlan.Create(
+            extraction,
+            false,
+            AnalysisScenarioDefaults.All,
+            occurredAt);
 
         Assert.Equal(JobStages.Completed, plan.NextStage);
         Assert.Null(plan.StageChange);
@@ -29,7 +33,11 @@ public sealed class ExtractionCompletionPlanTests
         var extraction = CreateExtraction();
         var occurredAt = DateTimeOffset.UtcNow;
 
-        var plan = ExtractionCompletionPlan.Create(extraction, true, occurredAt);
+        var plan = ExtractionCompletionPlan.Create(
+            extraction,
+            true,
+            [AnalysisScenarioV1.Topics],
+            occurredAt);
 
         Assert.Equal(JobStages.Analyzing, plan.NextStage);
         Assert.Equal(JobStages.Analyzing, plan.StageChange?.Stage);
@@ -37,6 +45,7 @@ public sealed class ExtractionCompletionPlanTests
         Assert.Null(plan.Completion);
         Assert.Equal(extraction.Transcript, plan.AnalysisRequest.Transcript);
         Assert.Equal(extraction.Thumbnail, plan.AnalysisRequest.Thumbnail);
+        Assert.Equal([AnalysisScenarioV1.Topics], plan.AnalysisRequest.Scenarios);
     }
 
     private static ExtractVideoCompletedPayloadV1 CreateExtraction()

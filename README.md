@@ -9,7 +9,7 @@ subject bullets.
 
 - `YouTubeProcessing.Api`: authenticated ASP.NET Core REST API and read model
 - `YouTubeProcessing.Orchestrator`: durable MassTransit workflow process
-- `YouTubeProcessing.Analyzer`: checksum-verifying Ollama analysis consumer
+- `YouTubeProcessing.Analyzer`: checksum-verifying Codex analysis consumer
 - `youtube-processing-extractor`: Python `yt-dlp` worker with inbox/outbox
 
 RabbitMQ carries commands and events. Each service has its own PostgreSQL
@@ -27,9 +27,9 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The default Compose configuration temporarily stops after transcript and
-thumbnail extraction. The analyzer and Ollama services are not started, and a
-successful extraction completes the job with `analysis: null`.
+The default Compose configuration stops after transcript and thumbnail
+extraction. The opt-in analyzer service is not started, and a successful
+extraction completes the job with `analysis: null`.
 
 To restore deterministic transcript analysis:
 
@@ -37,15 +37,23 @@ To restore deterministic transcript analysis:
 ANALYSIS_ENABLED=true docker compose --profile analysis up --build
 ```
 
-To restore Ollama-backed analysis, start both opt-in profiles, pull the
-configured model, and select the Ollama provider:
+To use analysis through a personal ChatGPT subscription, build the Analyzer,
+sign its Codex CLI into ChatGPT with device authentication, and select the
+`codex` provider:
 
 ```bash
-docker compose --profile llm up -d ollama
-docker compose exec ollama ollama pull llama3.2:3b
-ANALYSIS_ENABLED=true ANALYZER_PROVIDER=ollama \
-  docker compose --profile analysis --profile llm up --build
+docker compose --profile analysis build analyzer
+docker compose --profile analysis run --rm --no-deps \
+  --entrypoint codex analyzer login --device-auth
+ANALYSIS_ENABLED=true ANALYZER_PROVIDER=codex \
+  docker compose --profile analysis up --build
 ```
+
+The login is stored in the private `codex-data` Docker volume and is reused by
+the Analyzer. Treat that volume as a credential. This path consumes the Codex
+allowance and credits attached to the signed-in ChatGPT account; it does not
+use separately billed OpenAI API credits. Use it only in this trusted personal
+deployment, never in public CI or on runners that execute untrusted code.
 
 Submit a job:
 
@@ -54,13 +62,17 @@ curl -i http://localhost:8080/api/v1/video-analyses \
   -H "Content-Type: application/json" \
   -H "X-Api-Key: replace-this-development-key" \
   -H "Idempotency-Key: example-1" \
-  -d '{"video":"dQw4w9WgXcQ","preferredLanguage":"en"}'
+  -d '{"video":"dQw4w9WgXcQ","preferredLanguage":"en","scenarios":["summary","topics"]}'
 ```
 
 Poll the returned `statusUrl`; when it reports `completed`, request the
 `resultUrl`. Artifact links stream through the authenticated API.
 
-Health endpoints are `GET /health/live` and `GET /health/ready`. Interactive
+`GET /health` returns aggregate status for the API, PostgreSQL, RabbitMQ,
+MinIO, Orchestrator, Extractor, and the optional Analyzer. Worker status is
+derived from the required RabbitMQ queues and active consumer connections; a
+failed required component produces HTTP 503. Lightweight probe endpoints
+remain available at `GET /health/live` and `GET /health/ready`. Interactive
 Swagger UI is available at `/swagger`, and the generated OpenAPI document is
 available at `/openapi/v1.json`. In Swagger UI, select **Authorize** and enter
 the configured API key; Swagger will send it in the `X-Api-Key` header.

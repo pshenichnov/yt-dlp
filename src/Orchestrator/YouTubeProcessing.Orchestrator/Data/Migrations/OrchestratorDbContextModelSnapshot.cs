@@ -212,6 +212,12 @@ namespace YouTubeProcessing.Orchestrator.Data.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
+                    b.Property<string>("ScenariosJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[\"summary\",\"topics\"]'::jsonb");
+
                     b.Property<string>("Stage")
                         .IsRequired()
                         .HasMaxLength(32)

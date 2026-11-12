@@ -40,6 +40,15 @@ public static class VideoAnalysisEndpoints
             });
         }
 
+        if (request.Scenarios is { Count: 0 })
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["scenarios"] = ["Select at least one analysis scenario."]
+            });
+        }
+        var scenarios = AnalysisScenarioDefaults.Normalize(request.Scenarios);
+
         var idempotencyKey = httpContext.Request.Headers["Idempotency-Key"].ToString().Trim();
         if (idempotencyKey.Length > 200)
         {
@@ -93,6 +102,7 @@ public static class VideoAnalysisEndpoints
             PreferredLanguage = string.IsNullOrWhiteSpace(request.PreferredLanguage)
                 ? null
                 : request.PreferredLanguage.Trim(),
+            ScenariosJson = JsonSerializer.Serialize(scenarios),
             CreatedAt = now
         });
 
@@ -114,7 +124,8 @@ public static class VideoAnalysisEndpoints
                 videoId,
                 request.Video.Trim(),
                 request.PreferredLanguage,
-                now),
+                now,
+                scenarios),
             context => context.CorrelationId = jobId,
             cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
@@ -215,6 +226,8 @@ public static class VideoAnalysisEndpoints
         var subjects = analysis.SubjectsJson is null
             ? []
             : JsonSerializer.Deserialize<string[]>(analysis.SubjectsJson) ?? [];
+        var scenarios = JsonSerializer.Deserialize<AnalysisScenarioV1[]>(
+            analysis.ScenariosJson) ?? AnalysisScenarioDefaults.All;
 
         var transcript = artifacts.FirstOrDefault(x => x.Kind == "transcript");
         var thumbnail = artifacts.FirstOrDefault(x => x.Kind == "thumbnail");
@@ -245,7 +258,12 @@ public static class VideoAnalysisEndpoints
             analysis.AnalysisModel is null
                 ? null
                 : new AnalysisDetailsResponse(
-                    "ollama",
+                    analysis.AnalysisModel.Equals(
+                        "deterministic-development-provider",
+                        StringComparison.OrdinalIgnoreCase)
+                        ? "deterministic"
+                        : "codex",
+                    scenarios,
                     analysis.AnalysisModel,
                     analysis.PromptVersion,
                     analysis.CompletedAt)));
@@ -277,7 +295,13 @@ public static class VideoAnalysisEndpoints
     }
 }
 
-public sealed record CreateVideoAnalysisRequest(string Video, string? PreferredLanguage);
+public sealed record CreateVideoAnalysisRequest
+{
+    public string Video { get; init; } = string.Empty;
+    public string? PreferredLanguage { get; init; }
+    public IReadOnlyList<AnalysisScenarioV1>? Scenarios { get; init; } =
+        AnalysisScenarioDefaults.All;
+}
 public sealed record CreateVideoAnalysisResponse(
     Guid JobId,
     Guid AnalysisId,
@@ -328,6 +352,7 @@ public sealed record TranscriptResponse(string Language, string Source, string A
 public sealed record ThumbnailResponse(string ContentType, string ArtifactUrl);
 public sealed record AnalysisDetailsResponse(
     string Provider,
+    IReadOnlyList<AnalysisScenarioV1> Scenarios,
     string? Model,
     string? PromptVersion,
     DateTimeOffset? CreatedAt);

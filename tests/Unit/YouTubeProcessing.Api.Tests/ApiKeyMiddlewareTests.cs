@@ -7,6 +7,7 @@ namespace YouTubeProcessing.Api.Tests;
 public sealed class ApiKeyMiddlewareTests
 {
     [Theory]
+    [InlineData("/health")]
     [InlineData("/health/live")]
     [InlineData("/openapi/v1.json")]
     [InlineData("/swagger")]

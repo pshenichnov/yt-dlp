@@ -4,6 +4,7 @@
 
 ```bash
 docker compose ps
+curl -fsS http://localhost:8080/health
 curl -fsS http://localhost:8080/health/live
 curl -fsS http://localhost:8080/health/ready
 docker compose exec rabbitmq rabbitmq-diagnostics -q ping
@@ -12,6 +13,13 @@ docker compose exec postgres pg_isready -U youtube -d postgres
 
 RabbitMQ management is available on port 15672 and MinIO Console on port 9001
 in the development profile.
+
+The aggregate `/health` endpoint returns HTTP 503 when PostgreSQL, RabbitMQ,
+the artifact bucket, or a required message consumer is unavailable. The
+Orchestrator requires consumers on both its workflow and extractor-event
+queues; the Extractor and API each require their command/projection consumer.
+The Analyzer reports `disabled` without affecting overall status unless
+`ANALYSIS_ENABLED=true`.
 
 ## Trace a job
 
@@ -29,7 +37,7 @@ current stage before inspecting the corresponding service.
 1. Check whether the stage is `extractingTranscript` or `analyzingTranscript`.
 2. Check queue depth and consumer count in RabbitMQ.
 3. Inspect the owning service logs.
-4. Verify PostgreSQL, MinIO, and (for real analysis) Ollama connectivity.
+4. Verify PostgreSQL, MinIO, and (for real analysis) Codex authentication.
 5. Allow the workflow timeout scanner to produce a terminal
    `WORKFLOW_TIMEOUT`; do not edit workflow rows by hand.
 
@@ -71,18 +79,30 @@ manually, confirm no active or completed retained job references it. Back up
 the PostgreSQL databases and artifact volume together to preserve referential
 consistency.
 
-## Ollama unavailable
+## Codex unavailable or signed out
 
 The deterministic provider can validate plumbing but is not a production
-summary engine. For Ollama:
+summary engine. Confirm the pinned CLI and current login:
 
 ```bash
-docker compose --profile llm up -d ollama
-docker compose exec ollama ollama list
-docker compose exec ollama ollama pull llama3.2:3b
+docker compose --profile analysis run --rm --no-deps \
+  --entrypoint codex analyzer --version
+docker compose --profile analysis run --rm --no-deps \
+  --entrypoint codex analyzer login status
 ```
 
-Then set `ANALYZER_PROVIDER=ollama` and recreate the analyzer.
+If signed out, refresh the private `codex-data` volume, then recreate the
+Analyzer:
+
+```bash
+docker compose --profile analysis run --rm --no-deps \
+  --entrypoint codex analyzer login --device-auth
+ANALYSIS_ENABLED=true ANALYZER_PROVIDER=codex \
+  docker compose --profile analysis up -d analyzer orchestrator
+```
+
+Do not print, copy, or commit the Codex `auth.json` file. Account plan limits or
+credit exhaustion must be resolved in ChatGPT before retrying failed work.
 
 ## Backup
 

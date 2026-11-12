@@ -24,6 +24,8 @@ public sealed class VideoAnalysisRequestedConsumer(
             JobId = message.JobId,
             AnalysisId = message.AnalysisId,
             Stage = JobStages.Extracting,
+            ScenariosJson = JsonSerializer.Serialize(
+                AnalysisScenarioDefaults.Normalize(message.Scenarios)),
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         });
@@ -128,6 +130,8 @@ public sealed class ExtractorEventConsumer(
         var completion = ExtractionCompletionPlan.Create(
             result,
             workflowOptions.Value.AnalysisEnabled,
+            JsonSerializer.Deserialize<AnalysisScenarioV1[]>(process.ScenariosJson)
+                ?? AnalysisScenarioDefaults.All,
             DateTimeOffset.UtcNow);
 
         process.Stage = completion.NextStage;

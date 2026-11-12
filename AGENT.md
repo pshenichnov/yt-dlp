@@ -122,7 +122,7 @@ Do not rename the platform or public contracts without an explicit decision.
 - RabbitMQ for commands and events
 - PostgreSQL for durable service state, inboxes, outboxes, and projections
 - S3-compatible blob storage; MinIO is the phase-one local deployment
-- Ollama as the default phase-one transcript-analysis provider
+- Codex CLI with ChatGPT sign-in as the default transcript-analysis provider
 - Docker Compose for local development and the initial deployment profile
 
 Do not substitute Redis, Celery, Kafka, an in-process queue, direct HTTP calls
@@ -145,7 +145,7 @@ Owns:
 Does not:
 
 - Run yt-dlp
-- Call Ollama directly
+- Call the configured analysis provider directly
 - Execute long-running work during an HTTP request
 - Read RabbitMQ queue state to determine job status
 
@@ -395,7 +395,7 @@ or explicit API resources.
 
 ## Reliability Requirements
 
-- Set explicit timeouts for yt-dlp, FFmpeg, blob operations, and Ollama.
+- Set explicit timeouts for yt-dlp, FFmpeg, blob operations, and Codex.
 - Distinguish retryable failures from terminal failures.
 - Do not retry invalid input, deleted videos, private videos, or missing
   transcripts indefinitely.
@@ -419,7 +419,7 @@ or explicit API resources.
 - Do not log cookies, authorization headers, RabbitMQ passwords, PostgreSQL
   passwords, blob credentials, or LLM API keys.
 - Keep YouTube cookies optional and mounted as a secret when later needed.
-- Do not expose RabbitMQ, PostgreSQL, MinIO administration, Ollama, or internal
+- Do not expose RabbitMQ, PostgreSQL, MinIO administration, Codex, or internal
   services directly to the Internet.
 - Keep network exposure configurable. The initial HomeLab profile should use a
   trusted private network such as Tailscale rather than router port forwarding.

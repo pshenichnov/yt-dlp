@@ -27,6 +27,9 @@ Double underscores represent nested .NET configuration keys. Values in
 | `Platform__Blob__SecretKey` | none | S3 credential |
 | `Platform__Blob__Bucket` | `youtube-processing` | Artifact bucket |
 | `Platform__Blob__Region` | `us-east-1` | Signing region |
+| `Health__RabbitMqManagementEndpoint` | `http://rabbitmq:15672` | RabbitMQ management API used for aggregate service status |
+| `Health__TimeoutSeconds` | `3` | Per-component aggregate health timeout |
+| `Health__AnalyzerEnabled` | `false` | Require an active Analyzer consumer in aggregate health |
 
 ## Orchestrator
 
@@ -61,10 +64,13 @@ Double underscores represent nested .NET configuration keys. Values in
 | Key | Default | Purpose |
 |---|---|---|
 | `ConnectionStrings__AnalyzerDatabase` | none | Analyzer PostgreSQL database |
-| `Analyzer__Provider` | `ollama` | `ollama` or development-only `deterministic` |
-| `Analyzer__OllamaEndpoint` | `http://ollama:11434` | Private Ollama endpoint |
-| `Analyzer__Model` | `llama3.2:3b` | Model name |
-| `Analyzer__PromptVersion` | `video-summary-v1` | Prompt contract |
+| `Analyzer__Provider` | `codex` | `codex` or development-only `deterministic` |
+| `Analyzer__CodexExecutable` | `codex` | Codex CLI executable name or absolute path |
+| `Analyzer__Model` | `gpt-5.6-sol` | ChatGPT-accessible Codex model |
+| `Analyzer__ReasoningEffort` | `low` | Codex reasoning effort |
+| `Analyzer__ProviderTimeoutSeconds` | `300` | Per-Codex-process timeout |
+| `Analyzer__MaxProviderOutputCharacters` | `65536` | Bounded stdout capture |
+| `Analyzer__PromptVersion` | `video-analysis-v2` | Scenario-aware prompt contract |
 | `Analyzer__MaxTranscriptCharacters` | `2000000` | Hard transcript limit |
 | `Analyzer__ChunkCharacterLimit` | `48000` | Map/reduce chunk size |
 | `Analyzer__Blob__*` | see API | Analyzer S3 access |
@@ -72,3 +78,8 @@ Double underscores represent nested .NET configuration keys. Values in
 Never commit `.env`. Use a secret manager or Docker secrets outside local
 development. The API must only be bound to a trusted LAN/Tailscale interface
 for the initial deployment.
+
+The `codex` provider reuses `codex login` credentials. In Compose those
+credentials live in the `codex-data` volume. Never copy `auth.json` into the
+image, repository, environment variables, or logs. ChatGPT-managed automation
+is restricted to trusted personal deployments and must not run in public CI.

@@ -31,7 +31,8 @@ a job ID so that I can poll the job and later retrieve:
 ```json
 {
   "video": "https://www.youtube.com/watch?v=abc123def45",
-  "preferredLanguage": "en"
+  "preferredLanguage": "en",
+  "scenarios": ["summary", "topics"]
 }
 ```
 
@@ -91,7 +92,7 @@ HTTP/1.1 202 Accepted
 - One preferred language
 - Best available thumbnail
 - S3-compatible blob storage
-- Ollama transcript analysis
+- Codex CLI transcript analysis
 - Asynchronous job status
 - At least two extraction jobs accepted concurrently
 - Durable commands, state, and terminal results
@@ -152,7 +153,7 @@ Recommended increments:
 2. Real RabbitMQ and persistence
 3. Real blob storage
 4. Real yt-dlp extraction
-5. Real Ollama analysis
+5. Real Codex analysis
 6. Reliability and operational hardening
 
 Every increment must leave the system runnable through Docker Compose.
@@ -171,7 +172,7 @@ Every increment must leave the system runnable through Docker Compose.
 6. Select the maximum supported video duration.
 7. Select maximum caption and normalized-transcript sizes.
 8. Select blob retention and temporary-file retention.
-9. Confirm the Ollama endpoint and initial model.
+9. Confirm the Codex authentication approach and initial model.
 10. Decide whether public artifact access streams through the API or redirects
     to presigned URLs.
 
@@ -246,7 +247,7 @@ Every increment must leave the system runnable through Docker Compose.
    - Orchestrator
    - Extractor
    - Analyzer
-2. Use Ollama as an external configurable dependency or add a Compose profile.
+2. Add Codex CLI and persistent ChatGPT authentication to the Analyzer profile.
 3. Create separate PostgreSQL databases/schemas and users per service.
 4. Create the `youtube-artifacts` bucket through an idempotent initializer.
 5. Define RabbitMQ users, virtual host, permissions, durable exchanges, queues,
@@ -610,9 +611,9 @@ Tasks:
 Tasks:
 
 1. Define `ITranscriptAnalyzer`.
-2. Implement the Ollama adapter.
-3. Configure endpoint, model, timeout, and concurrency.
-4. Define `video-summary-v1`.
+2. Implement the Codex CLI adapter.
+3. Configure executable, model, timeout, and concurrency.
+4. Define the scenario-aware `video-analysis-v2` prompt contract.
 5. Require structured JSON output.
 6. Validate the description and subject bullets.
 7. Add bounded retry for malformed model responses.
@@ -646,16 +647,16 @@ Tasks:
 - Empty or nearly empty transcript
 - Invalid checksum
 - Blob unavailable
-- Ollama unavailable
-- Ollama timeout
+- Codex unavailable or signed out
+- Codex timeout
 - Malformed JSON response
 - Too few or too many bullets
 - Duplicate bullets
 - Duplicate command
 - Restart after result persistence and before publication
 
-Use a deterministic fake provider for normal CI. Run real Ollama tests under an
-explicit integration profile.
+Use a deterministic fake provider for normal CI. Run real Codex tests under an
+explicit integration profile with separate credentials.
 
 ### Exit criteria
 
@@ -720,7 +721,7 @@ explicit integration profile.
 - Restart RabbitMQ during processing.
 - Restart PostgreSQL during processing.
 - Make MinIO temporarily unavailable.
-- Make Ollama temporarily unavailable.
+- Make Codex temporarily unavailable.
 - Deliver every terminal event twice.
 
 ### Concurrency tests
@@ -745,7 +746,7 @@ explicit integration profile.
 1. Add structured JSON logging to every service.
 2. Add correlation, message, job, analysis, and video IDs.
 3. Propagate W3C trace context through internal and raw messages.
-4. Instrument HTTP, MassTransit, RabbitMQ, PostgreSQL, S3, yt-dlp, and Ollama
+4. Instrument HTTP, MassTransit, RabbitMQ, PostgreSQL, S3, yt-dlp, and Codex
    stage durations.
 5. Add liveness and readiness endpoints.
 6. Add metrics for job outcomes, stage duration, retries, queue depth, and
@@ -756,7 +757,7 @@ explicit integration profile.
    - RabbitMQ backlog
    - Extractor failures after YouTube changes
    - MinIO unavailable
-   - Ollama unavailable
+   - Codex unavailable
    - Dead-letter replay
    - Disk-space pressure
 9. Document yt-dlp upgrade and rollback procedure.
@@ -809,7 +810,7 @@ Do not hard-code reliance on a third-party video remaining available forever.
 - Requested transcript language unavailable
 - yt-dlp timeout
 - Blob outage
-- Ollama outage
+- Codex outage or account limit
 - Malformed model response
 
 ### Load scenario
@@ -843,7 +844,7 @@ Keep reviews small and preserve a runnable vertical slice:
 9. `extractor: add real yt-dlp metadata and transcript extraction`
 10. `extractor: add thumbnail extraction and blob upload`
 11. `analyzer: add deterministic fake analyzer`
-12. `analyzer: add Ollama provider and long-transcript handling`
+12. `analyzer: add Codex provider and long-transcript handling`
 13. `api: complete status and result projections`
 14. `reliability: add inbox/outbox, retry, redelivery, and dead-letter behavior`
 15. `observability: add tracing, metrics, and runbooks`
@@ -860,7 +861,7 @@ Each pull request should update tests and documentation relevant to its slice.
 | Raw JSON differs between C# and Python | Commands are rejected or misread | JSON Schema, examples, bidirectional contract tests |
 | Duplicate RabbitMQ delivery | Duplicate work or results | Inbox/outbox, stable command IDs, unique constraints |
 | Large transcripts exceed model context | Incomplete summary | Segment-aware map-reduce analysis |
-| Local Ollama is slow | Long analysis stage | One controlled consumer, timeouts, provider abstraction |
+| Codex usage is slow or limited | Long analysis stage | One controlled consumer, timeouts, provider abstraction |
 | N100 resource pressure affects Immich | HomeLab instability | Conservative concurrency, load test, monitor memory and swap |
 | NTFS artifact volume behaves poorly | Artifact corruption or latency | Verify MinIO behavior, checksums, backups, keep databases on ext4 |
 | Message contains large artifact | Broker pressure | Blob references only and message-size tests |

@@ -3,11 +3,14 @@ using MassTransit;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.RateLimiting;
 using YouTubeProcessing.Api;
 using YouTubeProcessing.Api.Consumers;
 using YouTubeProcessing.Api.Data;
 using YouTubeProcessing.Api.Endpoints;
+using YouTubeProcessing.Api.Health;
 using YouTubeProcessing.Api.Infrastructure;
 using YouTubeProcessing.Contracts;
 using YouTubeProcessing.Observability;
@@ -19,6 +22,11 @@ builder.Logging.AddJsonConsole();
 builder.Services
     .AddOptions<PlatformOptions>()
     .Bind(builder.Configuration.GetSection(PlatformOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services
+    .AddOptions<PlatformHealthOptions>()
+    .Bind(builder.Configuration.GetSection(PlatformHealthOptions.SectionName))
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
@@ -82,6 +90,24 @@ builder.Services.AddMassTransit(configurator =>
         });
     });
 });
+builder.Services.AddHttpClient<IRabbitMqManagementProbe, RabbitMqManagementProbe>(
+    (services, client) =>
+    {
+        var settings = services.GetRequiredService<IOptions<PlatformHealthOptions>>().Value;
+        client.BaseAddress = new Uri(
+            settings.RabbitMqManagementEndpoint.TrimEnd('/') + "/",
+            UriKind.Absolute);
+        client.Timeout = Timeout.InfiniteTimeSpan;
+
+        var configuration = services.GetRequiredService<IConfiguration>();
+        var username = configuration["RabbitMq:Username"] ?? "guest";
+        var password = configuration["RabbitMq:Password"] ?? "guest";
+        var credentials = Convert.ToBase64String(
+            Encoding.UTF8.GetBytes($"{username}:{password}"));
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Basic", credentials);
+    });
+builder.Services.AddScoped<PlatformHealthService>();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -111,6 +137,20 @@ app.UseSwaggerUI(options =>
 });
 
 app.MapOpenApi();
+app.MapGet("/health", async (
+        PlatformHealthService health,
+        CancellationToken cancellationToken) =>
+    {
+        var response = await health.CheckAsync(cancellationToken);
+        var statusCode = response.Status == HealthStatuses.Healthy
+            ? StatusCodes.Status200OK
+            : StatusCodes.Status503ServiceUnavailable;
+        return Results.Json(response, statusCode: statusCode);
+    })
+    .AllowAnonymous()
+    .WithName("GetPlatformHealth")
+    .Produces<PlatformHealthResponse>(StatusCodes.Status200OK)
+    .Produces<PlatformHealthResponse>(StatusCodes.Status503ServiceUnavailable);
 app.MapGet("/health/live", () => Results.Ok(new { status = "healthy" }))
     .AllowAnonymous();
 app.MapGet("/health/ready", async (ApiDbContext db, CancellationToken cancellationToken) =>

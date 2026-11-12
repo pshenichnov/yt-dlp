@@ -11,6 +11,7 @@ public sealed record ExtractionCompletionPlan(
     public static ExtractionCompletionPlan Create(
         ExtractVideoCompletedPayloadV1 extraction,
         bool analysisEnabled,
+        IReadOnlyList<AnalysisScenarioV1> scenarios,
         DateTimeOffset occurredAt)
     {
         if (analysisEnabled)
@@ -30,8 +31,9 @@ public sealed record ExtractionCompletionPlan(
                     extraction.Video,
                     extraction.Transcript,
                     extraction.Thumbnail,
-                    "video-summary-v1",
-                    occurredAt),
+                    "video-analysis-v2",
+                    occurredAt,
+                    scenarios),
                 null);
         }
 

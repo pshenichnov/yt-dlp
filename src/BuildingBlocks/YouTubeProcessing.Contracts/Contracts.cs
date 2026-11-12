@@ -1,4 +1,33 @@
+using System.Text.Json.Serialization;
+
 namespace YouTubeProcessing.Contracts;
+
+[JsonConverter(typeof(AnalysisScenarioJsonConverter))]
+public enum AnalysisScenarioV1
+{
+    [JsonStringEnumMemberName("summary")]
+    Summary,
+
+    [JsonStringEnumMemberName("topics")]
+    Topics
+}
+
+public sealed class AnalysisScenarioJsonConverter()
+    : JsonStringEnumConverter<AnalysisScenarioV1>(
+        namingPolicy: null,
+        allowIntegerValues: false);
+
+public static class AnalysisScenarioDefaults
+{
+    public static AnalysisScenarioV1[] All =>
+        [AnalysisScenarioV1.Summary, AnalysisScenarioV1.Topics];
+
+    public static AnalysisScenarioV1[] Normalize(
+        IEnumerable<AnalysisScenarioV1>? scenarios) =>
+        scenarios?.Distinct().ToArray() is { Length: > 0 } selected
+            ? selected
+            : All;
+}
 
 public static class QueueNames
 {
@@ -52,7 +81,8 @@ public sealed record VideoAnalysisRequestedV1(
     string VideoId,
     string OriginalInput,
     string? PreferredLanguage,
-    DateTimeOffset SubmittedAt);
+    DateTimeOffset SubmittedAt,
+    IReadOnlyList<AnalysisScenarioV1>? Scenarios = null);
 
 public sealed record JobStageChangedV1(
     Guid JobId,
@@ -87,7 +117,8 @@ public sealed record AnalyzeTranscriptV1(
     ArtifactReferenceV1 Transcript,
     ArtifactReferenceV1 Thumbnail,
     string PromptVersion,
-    DateTimeOffset RequestedAt);
+    DateTimeOffset RequestedAt,
+    IReadOnlyList<AnalysisScenarioV1>? Scenarios = null);
 
 public sealed record TranscriptAnalyzedV1(
     Guid JobId,

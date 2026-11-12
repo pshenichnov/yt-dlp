@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "subjects": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 3,
+      "maxItems": 10
+    }
+  },
+  "required": [
+    "subjects"
+  ],
+  "additionalProperties": false
+}

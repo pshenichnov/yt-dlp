@@ -17,4 +17,18 @@
     <ProjectReference Include="../../BuildingBlocks/YouTubeProcessing.Contracts/YouTubeProcessing.Contracts.csproj" />
     <ProjectReference Include="../../BuildingBlocks/YouTubeProcessing.Observability/YouTubeProcessing.Observability.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Update="Analysis/analysis-output-schema.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>analysis-output-schema.json</TargetPath>
+    </Content>
+    <Content Update="Analysis/summary-output-schema.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>summary-output-schema.json</TargetPath>
+    </Content>
+    <Content Update="Analysis/topics-output-schema.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>topics-output-schema.json</TargetPath>
+    </Content>
+  </ItemGroup>
 </Project>

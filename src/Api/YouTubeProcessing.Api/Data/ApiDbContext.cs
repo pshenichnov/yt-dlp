@@ -30,6 +30,9 @@ public sealed class ApiDbContext(DbContextOptions<ApiDbContext> options) : DbCon
             entity.HasIndex(x => x.VideoId);
             entity.Property(x => x.VideoId).HasMaxLength(32);
             entity.Property(x => x.SubjectsJson).HasColumnType("jsonb");
+            entity.Property(x => x.ScenariosJson)
+                .HasColumnType("jsonb")
+                .HasDefaultValueSql("'[\"summary\",\"topics\"]'::jsonb");
         });
 
         modelBuilder.Entity<ArtifactEntity>(entity =>
@@ -87,6 +90,7 @@ public sealed class AnalysisEntity
     public string? WebpageUrl { get; set; }
     public string? Summary { get; set; }
     public string? SubjectsJson { get; set; }
+    public string ScenariosJson { get; set; } = "[\"summary\",\"topics\"]";
     public string? AnalysisModel { get; set; }
     public string? PromptVersion { get; set; }
     public DateTimeOffset CreatedAt { get; set; }

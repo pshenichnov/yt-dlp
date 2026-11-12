@@ -64,7 +64,7 @@ audio transcription, bulk analysis, and semantic indexing.
 - Short description and subject bullet points
 - Concurrent processing
 - Retry, dead-letter, inbox, and outbox behavior
-- Structured logs, health checks, and basic metrics
+- Structured logs, aggregate dependency and consumer health checks, and basic metrics
 
 ### 4.2 Phase-one non-goals
 
@@ -97,7 +97,7 @@ audio transcription, bulk analysis, and semantic indexing.
                       ▼                             ▼                      ▼
              ┌──────────────────┐        ┌──────────────────┐    ┌────────────────┐
              │ Orchestrator     │        │ Python extractor │    │ Analyzer       │
-             │ .NET/MassTransit │        │ yt-dlp/FFmpeg    │    │ .NET/Ollama    │
+             │ .NET/MassTransit │        │ yt-dlp/FFmpeg    │    │ .NET/Codex CLI │
              └────────┬─────────┘        └────────┬─────────┘    └───────┬────────┘
                       │                           │                      │
                       ▼                           └──────────┬───────────┘
@@ -111,7 +111,7 @@ audio transcription, bulk analysis, and semantic indexing.
 External dependencies:
 
 - YouTube
-- Ollama in the initial HomeLab deployment
+- OpenAI's Codex service through a personal ChatGPT sign-in
 - Optional future hosted analysis provider
 
 ## 6. Container and Service Model
@@ -214,15 +214,17 @@ Owned data:
 - Analyzer inbox/outbox
 - Analysis execution and model metadata
 
-The initial provider is Ollama. Provider-specific code is hidden behind an
-`ITranscriptAnalyzer` port so a hosted service can be added later.
+The initial provider is the non-interactive Codex CLI authenticated through a
+personal ChatGPT account. Provider-specific code is hidden behind an
+`ITranscriptAnalyzer` port so API-key or other hosted providers can be added
+later.
 
 ### 6.5 Infrastructure containers
 
 - RabbitMQ with management UI restricted to trusted administration networks
 - PostgreSQL
 - MinIO for local S3-compatible blob storage
-- Ollama
+- Codex CLI in the Analyzer image
 - Optional OpenTelemetry Collector
 - Optional Prometheus and Grafana after core phase-one functionality
 
@@ -265,7 +267,7 @@ Analyzer
 ├── transcript artifact reader
 ├── transcript chunker
 ├── prompt builder
-├── Ollama adapter
+├── Codex CLI subprocess adapter
 ├── result validator
 ├── analysis repository
 └── event publisher
@@ -305,7 +307,7 @@ API
                                       ▼
                                 Analyzer
                                       │ fetch transcript
-                                      │ call Ollama
+                                      │ run subscription-authenticated Codex
                                       │ validate and persist result
                                       └── publish TranscriptAnalyzedV1
                                                    ▼
@@ -402,11 +404,13 @@ Request:
 ```json
 {
   "video": "https://www.youtube.com/watch?v=abc123def45",
-  "preferredLanguage": "en"
+  "preferredLanguage": "en",
+  "scenarios": ["summary", "topics"]
 }
 ```
 
-`video` may also be a video ID.
+`video` may also be a video ID. `scenarios` accepts `summary`, `topics`, or
+both; omitting it selects both scenarios.
 
 Response:
 
@@ -509,9 +513,10 @@ Response:
     "artifactUrl": "/api/v1/artifacts/0191d699-..."
   },
   "analysis": {
-    "provider": "ollama",
-    "model": "llama3.2:3b",
-    "promptVersion": "video-summary-v1",
+    "provider": "codex",
+    "scenarios": ["summary", "topics"],
+    "model": "gpt-5.6-sol",
+    "promptVersion": "video-analysis-v2",
     "createdAt": "2026-07-25T18:22:30Z"
   }
 }
@@ -880,10 +885,10 @@ ITranscriptAnalyzer
 
 Initial implementation:
 
-- Provider: Ollama
-- Default model: `llama3.2:3b`, configurable
-- Prompt version: `video-summary-v1`
-- Concurrency: one request initially on HomeLab-N100
+- Provider: Codex CLI with ChatGPT authentication
+- Default model: `gpt-5.6-sol`, configurable
+- Prompt version: `video-analysis-v2`
+- Concurrency: one request initially to protect account usage limits
 
 The model setting is configuration, not part of public API input.
 
@@ -893,8 +898,8 @@ The system prompt requires:
 
 - Use only supplied metadata and transcript
 - Return concise, neutral language
-- Produce a short description
-- Produce three to ten distinct subject bullets
+- Produce a short description when `summary` is selected
+- Produce three to ten distinct subject bullets when `topics` is selected
 - Avoid speculation
 - State uncertainty when transcript evidence is insufficient
 - Return structured JSON
@@ -1065,7 +1070,7 @@ All values are configuration. Initial targets:
 - API: normal ASP.NET asynchronous concurrency
 - Orchestrator: concurrency limited by saga persistence capacity
 - Extractor: two concurrent commands
-- Analyzer: one concurrent Ollama operation
+- Analyzer: one concurrent Codex operation
 - RabbitMQ prefetch aligned with consumer concurrency
 
 These limits protect the four-core N100 and existing Immich workload.
@@ -1104,7 +1109,7 @@ No client or orchestrator change is required to add worker replicas.
 ### 20.3 Infrastructure
 
 - Separate credentials per service.
-- Keep RabbitMQ, PostgreSQL, MinIO, Ollama, and internal services on a private
+- Keep RabbitMQ, PostgreSQL, MinIO, the Analyzer, and internal services on a private
   Docker network.
 - Bind the API to Tailscale for the initial HomeLab deployment.
 - Store secrets outside source control.
@@ -1121,7 +1126,7 @@ The REST job ID is the message `correlationId`. Propagate it through:
 - Raw JSON envelopes
 - Python logs
 - Blob artifact metadata
-- Ollama request logs where supported
+- Codex process exit status and bounded duration, without prompts or credentials
 
 Use `messageId` and `causationId` to reconstruct the message chain.
 
@@ -1163,19 +1168,17 @@ youtube-analyzer
 youtube-rabbitmq
 youtube-postgres
 youtube-minio
-youtube-ollama
 ```
 
-Ollama may be the independently managed service described in
-[`LOCAL_LLM.md`](LOCAL_LLM.md) rather than part of the project Compose file.
-Its endpoint remains private.
+The Analyzer image contains the pinned Codex CLI. Its ChatGPT authentication
+cache is stored in a private persistent volume populated by device login.
 
 ### 22.2 HomeLab storage
 
 - PostgreSQL: internal NVMe
 - RabbitMQ: internal NVMe
 - Service inbox/outbox: PostgreSQL on internal NVMe
-- Ollama models: internal NVMe when space permits
+- Codex authentication cache: private persistent storage
 - Blob artifacts: `/mnt/storage/YouTube`
 - Temporary extraction files: internal local filesystem with cleanup, unless
   capacity testing requires a dedicated path
@@ -1249,7 +1252,7 @@ These decisions must be recorded during the first execution-plan milestone:
 3. PostgreSQL major version
 4. RabbitMQ major version and queue type
 5. MinIO image/version and HomeLab storage path
-6. Initial Ollama endpoint, model, and response format support
+6. Initial Codex model, ChatGPT authentication, and response format support
 7. Authentication approach for phase-one API access
 8. Maximum video duration and transcript size
 9. Artifact retention policy

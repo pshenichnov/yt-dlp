@@ -50,6 +50,7 @@ public sealed class AnalyzeTranscriptConsumer(
             var result = await analyzer.AnalyzeAsync(
                 message.Video,
                 transcript,
+                AnalysisScenarioDefaults.Normalize(message.Scenarios),
                 context.CancellationToken);
             await context.Publish(
                 new TranscriptAnalyzedV1(

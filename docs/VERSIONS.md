@@ -1,6 +1,6 @@
 # Version Matrix
 
-Last reviewed: July 25, 2026
+Last reviewed: August 8, 2026
 
 | Component | Pinned version | Notes |
 |---|---:|---|
@@ -25,8 +25,9 @@ Last reviewed: July 25, 2026
 | RabbitMQ | 4.3.4-management | Quorum queues |
 | MinIO Community | RELEASE.2025-09-07T16-13-09Z | Local evaluation only; archived upstream |
 | MinIO client | RELEASE.2025-08-13T08-35-41Z | Bucket initializer |
-| Ollama | external/configured | Private endpoint; model pinned separately |
-| Ollama model | llama3.2:3b | Configurable deployment dependency |
+| Node.js | 24.7.0 | Analyzer build stage for the Codex CLI wrapper |
+| Codex CLI | 0.147.0 | Analyzer subscription-backed provider executable |
+| Codex model | gpt-5.6-sol | Configurable ChatGPT-accessible model |
 
 Patch upgrades require tests and an update to this matrix. Major upgrades
 require an architecture decision.

@@ -1,6 +1,6 @@
 # Phase-One Implementation Status
 
-Last updated: July 25, 2026
+Last updated: August 9, 2026
 
 The phase-one vertical slice is implemented. Milestone 0 decisions are recorded
 under `docs/decisions`, and the current source covers:
@@ -16,16 +16,17 @@ under `docs/decisions`, and the current source covers:
   fallback, bounded subprocess execution, WebVTT parsing, transcript text and
   segment JSON, original thumbnail upload, SHA-256 metadata, and a durable
   inbox/outbox publisher
-- Transcript checksum verification, deterministic test provider, Ollama JSON
-  provider, and long-transcript map/reduce chunking
+- Transcript checksum verification, deterministic test provider, Codex CLI
+  structured-output provider, selectable `summary` and `topics` scenarios,
+  and long-transcript map/reduce chunking
 - Docker Compose for PostgreSQL, RabbitMQ, MinIO, all four services, and an
-  optional Ollama profile
+  opt-in Analyzer profile with persistent ChatGPT authentication
 - OpenTelemetry hooks, health endpoints, contract examples, unit tests, and
   operator documentation
 
 The normal CI path is fixture-based and does not contact YouTube or require an
-LLM. Live YouTube/Ollama validation remains an opt-in integration exercise
-because those dependencies are externally mutable and may impose rate limits
-or content restrictions.
+LLM. Live YouTube/Codex validation remains an opt-in integration exercise
+because those dependencies are externally mutable and impose account usage
+limits.
 
 YouTube-wide search is explicitly outside phase one.

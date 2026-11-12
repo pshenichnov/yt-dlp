@@ -16,6 +16,14 @@ builder.Logging.AddJsonConsole();
 builder.Services.AddOptions<AnalyzerOptions>()
     .Bind(builder.Configuration.GetSection(AnalyzerOptions.SectionName))
     .ValidateDataAnnotations()
+    .Validate(
+        settings => settings.Provider.Equals("codex", StringComparison.OrdinalIgnoreCase) ||
+                    settings.Provider.Equals("deterministic", StringComparison.OrdinalIgnoreCase),
+        "Analyzer:Provider must be 'codex' or 'deterministic'.")
+    .Validate(
+        settings => settings.ReasoningEffort is "minimal" or "low" or "medium" or
+                    "high" or "xhigh",
+        "Analyzer:ReasoningEffort must be one of: minimal, low, medium, high, xhigh.")
     .ValidateOnStart();
 builder.Services.AddDbContext<AnalyzerDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("AnalyzerDatabase")));
@@ -35,13 +43,14 @@ builder.Services.AddSingleton<IAmazonS3>(services =>
         });
 });
 
-builder.Services.AddHttpClient<OllamaTranscriptAnalyzer>();
+builder.Services.AddSingleton<ICodexProcessRunner, CodexProcessRunner>();
+builder.Services.AddSingleton<CodexTranscriptAnalyzer>();
 builder.Services.AddSingleton<DeterministicTranscriptAnalyzer>();
 builder.Services.AddScoped<ITranscriptAnalyzer>(services =>
     services.GetRequiredService<IOptions<AnalyzerOptions>>().Value.Provider
         .Equals("deterministic", StringComparison.OrdinalIgnoreCase)
             ? services.GetRequiredService<DeterministicTranscriptAnalyzer>()
-            : services.GetRequiredService<OllamaTranscriptAnalyzer>());
+            : services.GetRequiredService<CodexTranscriptAnalyzer>());
 
 builder.Services.AddMassTransit(configurator =>
 {

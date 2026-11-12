@@ -2,11 +2,13 @@
 
 - Status: accepted
 - Date: 2026-07-25
+- Amended: 2026-08-09
 
 ## Context
 
 Phase one must produce a transcript-backed description without downloading the
-full video. Local inference is preferred for HomeLab operation.
+full video. The owner prefers to reuse a personal ChatGPT subscription instead
+of operating a local inference service.
 
 ## Decision
 
@@ -16,10 +18,12 @@ full video. Local inference is preferred for HomeLab operation.
 - Do not request machine-translated captions.
 - Return `TRANSCRIPT_UNAVAILABLE` when no supported caption exists.
 - Defer audio extraction and Whisper to a later phase.
-- Use Ollama through an `ITranscriptAnalyzer` interface.
-- Default to `llama3.2:3b`.
-- Use prompt version `video-summary-v1`.
-- Require structured JSON containing one description and three to ten subjects.
+- Use the non-interactive Codex CLI through an `ITranscriptAnalyzer` interface.
+- Authenticate Codex with the owner's ChatGPT account on a trusted deployment.
+- Default to `gpt-5.6-sol` with low reasoning effort.
+- Use prompt version `video-analysis-v2`.
+- Support the `summary` and `topics` scenarios, with both selected by default.
+- Require structured JSON containing only the fields selected by the request.
 - Use segment-aware chunking and a map-reduce summary for long transcripts.
 - Permit a deterministic fake analyzer only in tests and an explicit local
   development mode.
@@ -27,6 +31,11 @@ full video. Local inference is preferred for HomeLab operation.
 ## Consequences
 
 - Some valid public videos cannot be analyzed in phase one.
-- Summary quality depends on captions and the configured Ollama model.
+- Summary quality depends on captions and the configured Codex model.
+- Analysis consumes the signed-in account's Codex allowance and is subject to
+  ChatGPT plan limits.
+- The Codex authentication cache is a secret and must remain outside source
+  control in a private persistent volume or credential store.
+- ChatGPT-managed automation is limited to the trusted personal deployment; it
+  must not be copied into public CI or runners that execute untrusted code.
 - Provider, model, and prompt version are persisted with each result.
-

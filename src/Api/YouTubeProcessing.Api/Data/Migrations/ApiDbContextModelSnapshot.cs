@@ -234,6 +234,12 @@ namespace YouTubeProcessing.Api.Data.Migrations
                     b.Property<DateTimeOffset?>("PublishedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ScenariosJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[\"summary\",\"topics\"]'::jsonb");
+
                     b.Property<string>("SubjectsJson")
                         .HasColumnType("jsonb");
 
