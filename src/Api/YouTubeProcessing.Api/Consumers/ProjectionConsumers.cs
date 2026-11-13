@@ -71,7 +71,90 @@ public sealed class VideoAnalysisCompletedConsumer(ApiDbContext db)
         }
         AddArtifactIfMissing(message.AnalysisId, message.Thumbnail, message.CompletedAt);
 
+        await UpsertCatalog(message, context.CancellationToken);
+
         await db.SaveChangesAsync(context.CancellationToken);
+    }
+
+    private async Task UpsertCatalog(
+        VideoAnalysisCompletedV1 message,
+        CancellationToken cancellationToken)
+    {
+        var channelId = string.IsNullOrWhiteSpace(message.Video.ChannelId)
+            ? null
+            : message.Video.ChannelId;
+
+        if (channelId is not null)
+        {
+            var channel = await db.Channels.SingleOrDefaultAsync(
+                x => x.Id == channelId,
+                cancellationToken);
+            if (channel is null)
+            {
+                db.Channels.Add(new ChannelEntity
+                {
+                    Id = channelId,
+                    Name = message.Video.ChannelName,
+                    CreatedAt = message.CompletedAt,
+                    UpdatedAt = message.CompletedAt
+                });
+            }
+            else
+            {
+                if (message.CompletedAt >= channel.UpdatedAt &&
+                    !string.IsNullOrWhiteSpace(message.Video.ChannelName))
+                {
+                    channel.Name = message.Video.ChannelName;
+                }
+                if (message.CompletedAt > channel.UpdatedAt)
+                {
+                    channel.UpdatedAt = message.CompletedAt;
+                }
+            }
+        }
+
+        var video = await db.Videos.SingleOrDefaultAsync(
+            x => x.Id == message.Video.VideoId,
+            cancellationToken);
+        if (video is null)
+        {
+            db.Videos.Add(new VideoEntity
+            {
+                Id = message.Video.VideoId,
+                ChannelId = channelId,
+                LatestAnalysisId = message.AnalysisId,
+                Title = message.Video.Title,
+                Description = message.Video.Description,
+                WebpageUrl = message.Video.WebpageUrl,
+                PublishedAt = message.Video.PublishedAt,
+                DurationSeconds = message.Video.DurationSeconds,
+                ViewCount = message.Video.ViewCount,
+                LikeCount = message.Video.LikeCount,
+                FirstProcessedAt = message.CompletedAt,
+                LastProcessedAt = message.CompletedAt
+            });
+            return;
+        }
+
+        if (message.CompletedAt < video.FirstProcessedAt)
+        {
+            video.FirstProcessedAt = message.CompletedAt;
+        }
+        if (message.CompletedAt < video.LastProcessedAt)
+        {
+            return;
+        }
+
+        video.ChannelId = channelId;
+        video.LatestAnalysisId = message.AnalysisId;
+        video.Title = message.Video.Title;
+        video.Description = message.Video.Description;
+        video.WebpageUrl = message.Video.WebpageUrl;
+        video.PublishedAt = message.Video.PublishedAt;
+        video.DurationSeconds = message.Video.DurationSeconds;
+        video.ViewCount = message.Video.ViewCount;
+        video.LikeCount = message.Video.LikeCount;
+        video.LastProcessedAt = message.CompletedAt;
     }
 
     private void AddArtifactIfMissing(

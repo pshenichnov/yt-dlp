@@ -74,10 +74,11 @@ docker compose exec minio mc admin info local
 docker system df
 ```
 
-Artifacts have a 30-day local lifecycle rule. Before deleting any object
-manually, confirm no active or completed retained job references it. Back up
-the PostgreSQL databases and artifact volume together to preserve referential
-consistency.
+Completed artifacts are retained indefinitely by default. Set
+`ARTIFACT_RETENTION_DAYS` to a positive number only when expiration is
+intentional. Before deleting any object manually, confirm no cataloged video
+or completed analysis references it. Back up the PostgreSQL databases and
+artifact volume together to preserve referential consistency.
 
 ## Codex unavailable or signed out
 

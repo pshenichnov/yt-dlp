@@ -59,6 +59,12 @@ Double underscores represent nested .NET configuration keys. Values in
 | `MAX_CAPTION_BYTES` | `10485760` | 10 MiB |
 | `MAX_THUMBNAIL_BYTES` | `10485760` | 10 MiB |
 
+## Artifact retention
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `ARTIFACT_RETENTION_DAYS` | `0` | Completed-artifact retention; `0` keeps artifacts indefinitely, a positive value enables MinIO expiration |
+
 ## Analyzer
 
 | Key | Default | Purpose |

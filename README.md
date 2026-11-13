@@ -68,6 +68,20 @@ curl -i http://localhost:8080/api/v1/video-analyses \
 Poll the returned `statusUrl`; when it reports `completed`, request the
 `resultUrl`. Artifact links stream through the authenticated API.
 
+Completed jobs are also retained in a video catalog. The catalog groups
+manually submitted videos by their YouTube channel and exposes the latest
+summary, transcript artifact, and thumbnail artifact:
+
+```text
+GET /api/v1/videos
+GET /api/v1/videos/{videoId}
+GET /api/v1/channels
+GET /api/v1/channels/{channelId}/videos
+```
+
+The catalog does not discover channel videos or schedule processing
+automatically.
+
 A local browser UI is available at `http://localhost:8080/`. Enter a YouTube
 video ID or URL and the configured API key to run a summary analysis and view
 the resulting thumbnail and description. The browser retains the API key only

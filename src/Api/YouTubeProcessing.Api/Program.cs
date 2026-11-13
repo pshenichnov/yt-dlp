@@ -161,6 +161,7 @@ app.MapGet("/health/ready", async (ApiDbContext db, CancellationToken cancellati
             : Results.StatusCode(StatusCodes.Status503ServiceUnavailable))
     .AllowAnonymous();
 app.MapVideoAnalysisEndpoints();
+app.MapVideoCatalogEndpoints();
 
 if (app.Configuration.GetValue("Database:ApplyMigrations", true))
 {

@@ -81,10 +81,14 @@ services:
         mc alias set local http://minio:9000 "$${S3_ACCESS_KEY}" "$${S3_SECRET_KEY}"
         mc mb --ignore-existing local/youtube-processing
         mc anonymous set none local/youtube-processing
-        mc ilm rule add --expire-days 30 local/youtube-processing || true
+        mc ilm rule remove --all --force local/youtube-processing || true
+        if [ "$${ARTIFACT_RETENTION_DAYS}" != "0" ]; then
+          mc ilm rule add --expire-days "$${ARTIFACT_RETENTION_DAYS}" local/youtube-processing
+        fi
     environment:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-youtube}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-youtube_dev_secret}
+      ARTIFACT_RETENTION_DAYS: ${ARTIFACT_RETENTION_DAYS:-0}
 
   api:
     build:

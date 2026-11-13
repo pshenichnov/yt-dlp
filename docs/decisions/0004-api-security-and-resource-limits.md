@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-07-25
+- Amended: 2026-11-12
 
 ## Context
 
@@ -23,7 +24,9 @@ LLM. It needs authentication and resource limits before accepting work.
 - Limit extraction to five minutes per yt-dlp invocation and ten minutes for
   the complete extraction stage.
 - Limit analysis to fifteen minutes and a complete job to thirty minutes.
-- Retain completed artifacts for 30 days by default.
+- Retain completed artifacts indefinitely by default so cataloged videos keep
+  their transcript and thumbnail. Allow an explicit positive retention period
+  for storage-constrained deployments.
 - Retain failed-job artifacts for seven days.
 - Remove command-local temporary files immediately after a terminal outcome,
   with a 24-hour stale-directory cleanup fallback.
@@ -35,3 +38,5 @@ LLM. It needs authentication and resource limits before accepting work.
 - Adding multiple users later requires a stronger identity provider and
   per-subject authorization.
 - Limits are configurable but cannot be disabled with zero or negative values.
+- Persistent artifact retention requires storage monitoring and deliberate
+  cleanup of cataloged videos and their artifacts.

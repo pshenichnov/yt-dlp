@@ -316,6 +316,29 @@ namespace YouTubeProcessing.Api.Data.Migrations
                     b.ToTable("Artifacts", "api");
                 });
 
+            modelBuilder.Entity("YouTubeProcessing.Api.Data.ChannelEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UpdatedAt");
+
+                    b.ToTable("Channels", "api");
+                });
+
             modelBuilder.Entity("YouTubeProcessing.Api.Data.IdempotencyRecord", b =>
                 {
                     b.Property<string>("Key")
@@ -383,6 +406,61 @@ namespace YouTubeProcessing.Api.Data.Migrations
                     b.ToTable("Jobs", "api");
                 });
 
+            modelBuilder.Entity("YouTubeProcessing.Api.Data.VideoEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ChannelId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<long?>("DurationSeconds")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("FirstProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LastProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("LatestAnalysisId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long?>("LikeCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<long?>("ViewCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("WebpageUrl")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChannelId");
+
+                    b.HasIndex("LastProcessedAt");
+
+                    b.HasIndex("LatestAnalysisId");
+
+                    b.ToTable("Videos", "api");
+                });
+
             modelBuilder.Entity("MassTransit.EntityFrameworkCoreIntegration.OutboxMessage", b =>
                 {
                     b.HasOne("MassTransit.EntityFrameworkCoreIntegration.OutboxState", null)
@@ -393,6 +471,27 @@ namespace YouTubeProcessing.Api.Data.Migrations
                         .WithMany()
                         .HasForeignKey("InboxMessageId", "InboxConsumerId")
                         .HasPrincipalKey("MessageId", "ConsumerId");
+                });
+
+            modelBuilder.Entity("YouTubeProcessing.Api.Data.VideoEntity", b =>
+                {
+                    b.HasOne("YouTubeProcessing.Api.Data.ChannelEntity", "Channel")
+                        .WithMany("Videos")
+                        .HasForeignKey("ChannelId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("YouTubeProcessing.Api.Data.AnalysisEntity", null)
+                        .WithMany()
+                        .HasForeignKey("LatestAnalysisId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Channel");
+                });
+
+            modelBuilder.Entity("YouTubeProcessing.Api.Data.ChannelEntity", b =>
+                {
+                    b.Navigation("Videos");
                 });
 #pragma warning restore 612, 618
         }

@@ -21,12 +21,63 @@
       <p class="eyebrow">Transcript-powered analysis</p>
       <h1 id="page-title">Understand a video<br>without watching it first.</h1>
       <p class="intro-copy">
-        Paste a YouTube video ID or URL. The platform extracts its captions and
-        asks Codex for a concise summary.
+        Browse the videos you have already processed, grouped by channel, or
+        add another YouTube video to the library.
       </p>
     </section>
 
-    <section class="workspace" aria-label="Video analysis workspace">
+    <section id="library" class="library" aria-labelledby="library-title">
+      <div class="library-heading">
+        <div>
+          <p class="eyebrow">Processed library</p>
+          <h2 id="library-title">Channels</h2>
+          <p id="library-summary" class="section-copy">
+            Enter your API key to load saved channels.
+          </p>
+        </div>
+
+        <div class="library-auth">
+          <div class="field">
+            <label for="api-key">API key</label>
+            <input
+              id="api-key"
+              name="api-key"
+              type="password"
+              placeholder="Your local API key"
+              autocomplete="off">
+            <p class="field-note">Kept only in this browser tab.</p>
+          </div>
+          <button id="load-library-button" class="secondary-button" type="button">
+            Load library
+          </button>
+        </div>
+      </div>
+
+      <div id="library-error" class="error-panel" role="alert" hidden></div>
+      <p id="library-loading" class="library-state" hidden>Loading channels…</p>
+      <div id="channel-list" class="channel-grid"></div>
+
+      <section id="channel-videos" class="channel-videos" hidden>
+        <button id="back-to-channels" class="back-button" type="button">
+          <span aria-hidden="true">←</span> All channels
+        </button>
+        <div class="channel-video-heading">
+          <div>
+            <p class="eyebrow">Channel</p>
+            <h2 id="selected-channel-name"></h2>
+          </div>
+          <span id="selected-channel-count" class="video-count"></span>
+        </div>
+        <div id="video-list" class="video-list"></div>
+      </section>
+    </section>
+
+    <section class="workspace" aria-labelledby="analysis-title">
+      <div class="workspace-heading">
+        <p class="eyebrow">Add to library</p>
+        <h2 id="analysis-title">Process another video</h2>
+      </div>
+
       <form id="analysis-form" class="analysis-form">
         <div class="field field-wide">
           <label for="video">YouTube video ID or URL</label>
@@ -38,18 +89,6 @@
             autocomplete="off"
             spellcheck="false"
             required>
-        </div>
-
-        <div class="field">
-          <label for="api-key">API key</label>
-          <input
-            id="api-key"
-            name="api-key"
-            type="password"
-            placeholder="Your local API key"
-            autocomplete="off"
-            required>
-          <p class="field-note">Kept only in this browser tab.</p>
         </div>
 
         <button id="submit-button" type="submit">

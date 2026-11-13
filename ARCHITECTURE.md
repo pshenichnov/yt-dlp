@@ -129,6 +129,8 @@ Responsibilities:
 - Publish the initial internal event using the MassTransit bus outbox
 - Consume job-status and result events
 - Serve job and result resources
+- Maintain the processed-video and channel catalog read models
+- Serve stored videos grouped by channel
 - Generate controlled artifact download URLs
 - Apply authentication and API rate limits
 
@@ -137,6 +139,8 @@ Owned data:
 - `Jobs`
 - `VideoAnalysisResults`
 - `ArtifactReadModels`
+- `Videos`
+- `Channels`
 - API idempotency records
 - MassTransit bus outbox tables
 
@@ -534,6 +538,24 @@ GET /api/v1/artifacts/{artifactId}
 The endpoint authorizes the caller and then either streams the object or
 redirects to a short-lived presigned URL. Bucket names, internal endpoints, and
 credentials remain private.
+
+### 10.5 Processed video catalog
+
+```http
+GET /api/v1/videos
+GET /api/v1/videos/{videoId}
+GET /api/v1/channels
+GET /api/v1/channels/{channelId}/videos
+```
+
+Every completed manual submission is projected into a durable video catalog.
+The video points to its latest completed analysis, whose transcript and
+thumbnail artifacts remain stored in blob storage. Reprocessing a video keeps
+the historical analysis and moves the catalog pointer to the newest result.
+
+Channels are learned only from metadata returned for explicitly submitted
+videos. The catalog does not enumerate a channel, discover uploads, or create
+processing jobs automatically.
 
 ## 11. Input Canonicalization
 
