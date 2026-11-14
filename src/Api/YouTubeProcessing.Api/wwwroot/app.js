@@ -30,6 +30,7 @@ const channelForm = document.querySelector("#channel-form");
 const channelIdInput = document.querySelector("#channel-id");
 const addChannelButton = document.querySelector("#add-channel-button");
 const loadMoreVideosButton = document.querySelector("#load-more-videos");
+const processedOnlyInput = document.querySelector("#processed-only");
 
 const apiKeyStorageKey = "youtube-processing-api-key";
 const stageLabels = {
@@ -48,6 +49,9 @@ let selectedChannel;
 let currentVideoPage;
 let nextVideoOffset = 0;
 
+processedOnlyInput.checked =
+  new URLSearchParams(window.location.search).get("processed-only") === "true";
+
 apiKeyInput.value = sessionStorage.getItem(apiKeyStorageKey) ?? "";
 if (apiKeyInput.value) {
   loadChannels();
@@ -63,7 +67,14 @@ apiKeyInput.addEventListener("keydown", (event) => {
 
 backToChannelsButton.addEventListener("click", () => showChannelList(true));
 loadMoreVideosButton.addEventListener("click", loadMoreChannelVideos);
+processedOnlyInput.addEventListener("change", async () => {
+  if (!selectedChannel) return;
+  setChannelUrl(selectedChannel);
+  await loadChannelVideos(selectedChannel, 0, false, false);
+});
 window.addEventListener("popstate", async () => {
+  processedOnlyInput.checked =
+    new URLSearchParams(window.location.search).get("processed-only") === "true";
   const reference = getRequestedChannelReference();
   if (!reference) {
     showChannelList(false);
@@ -217,7 +228,8 @@ async function loadChannelVideos(
   try {
     const separator = channel.videosUrl.includes("?") ? "&" : "?";
     const page = await fetchJson(
-      `${channel.videosUrl}${separator}limit=12&offset=${offset}`,
+      `${channel.videosUrl}${separator}limit=12&offset=${offset}` +
+        `&processedOnly=${processedOnlyInput.checked}`,
       apiKey);
     renderChannelVideos(channel, page, apiKey, append);
   } catch (error) {
@@ -255,17 +267,38 @@ function renderChannelVideos(channel, page, apiKey, append) {
         <div class="library-video-meta">
           <span data-kind="processed"></span>
           <span data-kind="published"></span>
+          <span data-kind="duration"></span>
         </div>
+        <div class="video-state-list"></div>
         <h3 class="library-video-title"></h3>
-        <p class="library-video-summary"></p>
+        <div class="content-copy">
+          <p class="library-video-summary"></p>
+          <button class="content-more" type="button" aria-expanded="false" hidden>More</button>
+        </div>
         <div class="library-video-actions">
           <a data-kind="youtube" target="_blank" rel="noreferrer">Watch on YouTube ↗</a>
         </div>
       </div>`;
 
     card.querySelector(".library-video-title").textContent = item.video.title;
-    card.querySelector(".library-video-summary").textContent =
-      item.description || item.summary || "No description is available.";
+    const content = card.querySelector(".library-video-summary");
+    const descriptionText = item.description || "No description is available.";
+    const summaryText = item.summary?.trim();
+    content.textContent = descriptionText;
+    configureExpandableContent(content);
+
+    const states = card.querySelector(".video-state-list");
+    if (item.latestAnalysisId) {
+      addVideoState(states, "Processed", true);
+      addVideoState(states, "Transcript extracted", Boolean(item.transcript));
+      addVideoState(states, "Summary generated", Boolean(summaryText));
+    } else {
+      addVideoState(states, "Unprocessed", false);
+    }
+
+    if (summaryText) {
+      addContentSwitcher(content, descriptionText, summaryText);
+    }
 
     const processed = card.querySelector('[data-kind="processed"]');
     if (item.lastProcessedAt) {
@@ -288,6 +321,13 @@ function renderChannelVideos(channel, page, apiKey, append) {
       published.remove();
     }
 
+    const duration = card.querySelector('[data-kind="duration"]');
+    if (Number.isFinite(item.video.durationSeconds)) {
+      duration.textContent = `Length ${formatDuration(item.video.durationSeconds)}`;
+    } else {
+      duration.remove();
+    }
+
     card.querySelector('[data-kind="youtube"]').href = item.video.url;
     const transcriptUrl = getArtifactUrl(item.transcript);
     if (transcriptUrl) {
@@ -298,14 +338,28 @@ function renderChannelVideos(channel, page, apiKey, append) {
       transcriptButton.addEventListener("click", () => openArtifact(transcriptUrl, apiKey));
       card.querySelector(".library-video-actions").append(transcriptButton);
     }
+    if (!item.latestAnalysisId) {
+      const processButton = document.createElement("button");
+      processButton.type = "button";
+      processButton.className = "process-video-button";
+      processButton.textContent = "Process & summarize";
+      const processStatus = document.createElement("span");
+      processStatus.className = "process-video-status";
+      processButton.addEventListener("click", () =>
+        processCatalogVideo(item, card, processButton, processStatus, apiKey));
+      card.querySelector(".library-video-actions").append(processButton, processStatus);
+    }
 
     videoList.append(card);
+    refreshExpandableContent(content);
     loadLibraryThumbnail(card.querySelector(".library-thumbnail"), item, apiKey);
   }
 
   const shownCount = videoList.childElementCount;
-  selectedChannelCount.textContent =
-    `${shownCount} shown · ${formatCount(page.storedVideoCount, "video")} loaded in DB · newest first`;
+  selectedChannelCount.textContent = page.processedOnly
+    ? `${shownCount} shown · ${page.storedVideoCount} processed of ` +
+      `${formatCount(page.totalStoredVideoCount, "video")} loaded in DB`
+    : `${shownCount} shown · ${formatCount(page.storedVideoCount, "video")} loaded in DB · newest first`;
   loadMoreVideosButton.hidden = !page.hasMore;
   loadMoreVideosButton.disabled = false;
   loadMoreVideosButton.textContent = page.hasStoredNextPage
@@ -408,7 +462,155 @@ function normalizeChannelReference(value) {
 function setChannelUrl(channel) {
   const url = new URL(window.location.href);
   url.searchParams.set("channel-id", channel.handle || channel.channelId);
+  if (processedOnlyInput.checked) {
+    url.searchParams.set("processed-only", "true");
+  } else {
+    url.searchParams.delete("processed-only");
+  }
   history.pushState({}, "", `${url.pathname}${url.search}`);
+}
+
+function addVideoState(container, label, complete) {
+  const state = document.createElement("span");
+  state.className = `video-state${complete ? " complete" : ""}`;
+  state.textContent = label;
+  container.append(state);
+}
+
+function createContentButton(label, selected) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  button.setAttribute("aria-pressed", String(selected));
+  return button;
+}
+
+function addContentSwitcher(content, descriptionText, summaryText) {
+  const contentCopy = content.closest(".content-copy");
+  contentCopy.parentElement.querySelector(".content-switcher")?.remove();
+  const switcher = document.createElement("div");
+  switcher.className = "content-switcher";
+  const descriptionButton = createContentButton("Description", true);
+  const summaryButton = createContentButton("Generated summary", false);
+  descriptionButton.addEventListener("click", () => {
+    content.textContent = descriptionText;
+    refreshExpandableContent(content, true);
+    descriptionButton.setAttribute("aria-pressed", "true");
+    summaryButton.setAttribute("aria-pressed", "false");
+  });
+  summaryButton.addEventListener("click", () => {
+    content.textContent = summaryText;
+    refreshExpandableContent(content, true);
+    descriptionButton.setAttribute("aria-pressed", "false");
+    summaryButton.setAttribute("aria-pressed", "true");
+  });
+  switcher.append(descriptionButton, summaryButton);
+  contentCopy.before(switcher);
+}
+
+function configureExpandableContent(content) {
+  const contentCopy = content.closest(".content-copy");
+  const moreButton = contentCopy.querySelector(".content-more");
+  moreButton.addEventListener("click", () => {
+    const expanded = contentCopy.classList.toggle("expanded");
+    moreButton.textContent = expanded ? "Less" : "More";
+    moreButton.setAttribute("aria-expanded", String(expanded));
+  });
+}
+
+function refreshExpandableContent(content, collapse = false) {
+  const contentCopy = content.closest(".content-copy");
+  const moreButton = contentCopy.querySelector(".content-more");
+  if (collapse) {
+    contentCopy.classList.remove("expanded");
+    moreButton.textContent = "More";
+    moreButton.setAttribute("aria-expanded", "false");
+  }
+  requestAnimationFrame(() => {
+    const isOverflowing = content.scrollHeight > content.clientHeight + 1;
+    moreButton.hidden = !isOverflowing && !contentCopy.classList.contains("expanded");
+  });
+}
+
+async function processCatalogVideo(item, card, button, status, apiKey) {
+  button.disabled = true;
+  status.textContent = "Queued…";
+  libraryError.hidden = true;
+  try {
+    const created = await fetchJson("/api/v1/video-analyses", apiKey, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": crypto.randomUUID()
+      },
+      body: JSON.stringify({
+        video: item.video.videoId,
+        preferredLanguage: "en",
+        scenarios: ["summary"]
+      })
+    });
+    const result = await pollCatalogJob(created, apiKey, (job) => {
+      status.textContent = `${stageLabels[job.stage] ?? "Processing…"} ${job.progress ?? 0}%`;
+    });
+
+    item.latestAnalysisId = result.analysisId;
+    item.summary = result.description;
+    item.transcript = result.transcript;
+    item.lastProcessedAt = new Date().toISOString();
+
+    const states = card.querySelector(".video-state-list");
+    states.replaceChildren();
+    addVideoState(states, "Processed", true);
+    addVideoState(states, "Transcript extracted", Boolean(result.transcript));
+    addVideoState(states, "Summary generated", Boolean(result.description?.trim()));
+
+    const processed = card.querySelector('[data-kind="processed"]');
+    const processedTime = document.createElement("time");
+    processedTime.dateTime = item.lastProcessedAt;
+    processedTime.textContent = `Processed ${formatDateTime(item.lastProcessedAt)}`;
+    processed.replaceChildren(processedTime);
+
+    const summaryText = result.description?.trim();
+    if (summaryText) {
+      addContentSwitcher(
+        card.querySelector(".library-video-summary"),
+        item.description || "No description is available.",
+        summaryText);
+    }
+
+    const transcriptUrl = getArtifactUrl(result.transcript);
+    if (transcriptUrl) {
+      const transcriptButton = document.createElement("button");
+      transcriptButton.type = "button";
+      transcriptButton.className = "artifact-button";
+      transcriptButton.textContent = "Open transcript ↗";
+      transcriptButton.addEventListener("click", () => openArtifact(transcriptUrl, apiKey));
+      button.before(transcriptButton);
+    }
+
+    status.textContent = "Processing complete";
+    button.remove();
+  } catch (error) {
+    button.disabled = false;
+    status.textContent = "";
+    showLibraryError(error instanceof Error ? error.message : "Video processing failed.");
+  }
+}
+
+async function pollCatalogJob(created, apiKey, onProgress) {
+  const deadline = Date.now() + 15 * 60 * 1000;
+  while (Date.now() < deadline) {
+    const job = await fetchJson(created.statusUrl, apiKey);
+    onProgress(job);
+    if (job.status === "completed") {
+      return fetchJson(created.resultUrl, apiKey);
+    }
+    if (job.status === "failed") {
+      throw new Error(job.error?.message ?? "The video analysis failed.");
+    }
+    await delay(1500);
+  }
+  throw new Error("Analysis is still running after 15 minutes. Check the service logs.");
 }
 
 async function loadLibraryThumbnail(container, item, apiKey) {
@@ -607,6 +809,16 @@ function formatShortDate(value) {
     month: "short",
     day: "numeric"
   }).format(new Date(value));
+}
+
+function formatDuration(value) {
+  const totalSeconds = Math.max(0, Math.round(Number(value) || 0));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+    : `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 function formatCount(count, noun) {

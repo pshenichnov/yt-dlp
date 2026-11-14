@@ -102,6 +102,7 @@ class ChannelVideoMetadata(ContractModel):
     description: str | None
     thumbnail_url: str | None
     published_at: datetime | None
+    duration_seconds: int | None
     webpage_url: str
 
 

@@ -328,6 +328,7 @@ def to_channel_video_metadata(info: dict[str, Any]) -> ChannelVideoMetadata:
         description=_as_str(info.get("description")),
         thumbnail_url=best_thumbnail_url(info),
         published_at=parse_upload_date(info.get("upload_date")),
+        duration_seconds=_as_int(info.get("duration")),
         webpage_url=str(
             info.get("webpage_url")
             or f"https://www.youtube.com/watch?v={video_id}"

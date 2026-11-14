@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Create a concise AI summary from a YouTube video transcript.">
   <title>Video Brief</title>
-  <link rel="stylesheet" href="/styles.css?v=20261114-3">
+  <link rel="stylesheet" href="/styles.css?v=20261114-8">
 </head>
 <body>
   <header class="site-header">
@@ -81,7 +81,13 @@
             <p class="eyebrow">Channel</p>
             <h2 id="selected-channel-name"></h2>
           </div>
-          <span id="selected-channel-count" class="video-count"></span>
+          <div class="channel-video-tools">
+            <span id="selected-channel-count" class="video-count"></span>
+            <label class="processed-filter" for="processed-only">
+              <input id="processed-only" type="checkbox">
+              <span>Show processed only</span>
+            </label>
+          </div>
         </div>
         <div id="video-list" class="video-list"></div>
         <button id="load-more-videos" class="secondary-button load-more-button" type="button" hidden>
@@ -157,6 +163,6 @@
     Results and credentials stay within your locally running platform.
   </footer>
 
-  <script src="/app.js?v=20261114-5" defer></script>
+  <script src="/app.js?v=20261114-8" defer></script>
 </body>
 </html>

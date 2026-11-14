@@ -94,6 +94,7 @@ async def test_fetch_channel_page_reads_only_one_metadata_page(tmp_path: Path) -
             "title": f"Video {index}",
             "description": f"Description {index}",
             "upload_date": f"2026110{index}",
+            "duration": 120 + index,
             "channel": "Example channel",
             "uploader_id": "@ExampleTrades",
             "thumbnails": [
@@ -122,6 +123,7 @@ async def test_fetch_channel_page_reads_only_one_metadata_page(tmp_path: Path) -
     assert page.channel_handle == "ExampleTrades"
     assert page.videos[0].description == "Description 1"
     assert page.videos[0].thumbnail_url == "https://img.example/1-large.jpg"
+    assert page.videos[0].duration_seconds == 121
     args = extractor._run.await_args.args[0]  # type: ignore[attr-defined]
     assert args[args.index("--playlist-start") + 1] == "1"
     assert args[args.index("--playlist-end") + 1] == "3"

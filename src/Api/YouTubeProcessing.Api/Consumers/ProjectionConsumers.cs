@@ -273,6 +273,7 @@ public sealed class ChannelCatalogEventConsumer(
                     WebpageUrl = item.WebpageUrl,
                     ThumbnailUrl = item.ThumbnailUrl,
                     PublishedAt = item.PublishedAt,
+                    DurationSeconds = item.DurationSeconds,
                     DiscoveredAt = envelope.OccurredAt
                 });
                 continue;
@@ -284,6 +285,7 @@ public sealed class ChannelCatalogEventConsumer(
             video.WebpageUrl = item.WebpageUrl;
             video.ThumbnailUrl = item.ThumbnailUrl;
             video.PublishedAt = item.PublishedAt;
+            video.DurationSeconds = item.DurationSeconds;
         }
 
         channel.SyncStatus = ChannelSyncStatuses.Ready;

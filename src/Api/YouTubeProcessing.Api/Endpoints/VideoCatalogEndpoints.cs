@@ -196,6 +196,7 @@ public static partial class VideoCatalogEndpoints
         string channelId,
         int? limit,
         int? offset,
+        bool? processedOnly,
         ApiDbContext db,
         CancellationToken cancellationToken)
     {
@@ -209,16 +210,22 @@ public static partial class VideoCatalogEndpoints
 
         var normalizedLimit = NormalizeLimit(limit);
         var normalizedOffset = NormalizeOffset(offset);
+        var filterProcessed = processedOnly == true;
         var videos = await LoadVideos(
             db,
             channelId,
             normalizedLimit + 1,
             normalizedOffset,
+            filterProcessed,
             cancellationToken);
-        var storedVideoCount = await CountVideos(db, channelId, cancellationToken);
+        var totalStoredVideoCount = await CountVideos(db, channelId, cancellationToken);
+        var storedVideoCount = filterProcessed
+            ? await CountVideos(db, channelId, cancellationToken, processedOnly: true)
+            : totalStoredVideoCount;
         var hasStoredNextPage = videos.Count > normalizedLimit;
         var items = videos.Take(normalizedLimit).ToList();
-        var hasMore = hasStoredNextPage || channel.HasMoreVideos;
+        var hasRemoteNextPage = !filterProcessed && channel.HasMoreVideos;
+        var hasMore = hasStoredNextPage || hasRemoteNextPage;
         var nextOffset = hasMore ? normalizedOffset + items.Count : (int?)null;
 
         return Results.Ok(new ChannelVideoPageResponse(
@@ -226,8 +233,10 @@ public static partial class VideoCatalogEndpoints
             normalizedOffset,
             normalizedLimit,
             storedVideoCount,
+            totalStoredVideoCount,
+            filterProcessed,
             hasStoredNextPage,
-            channel.HasMoreVideos,
+            hasRemoteNextPage,
             hasMore,
             nextOffset,
             channel.SyncStatus));
@@ -237,6 +246,7 @@ public static partial class VideoCatalogEndpoints
         string? channelId,
         int? limit,
         int? offset,
+        bool? processedOnly,
         ApiDbContext db,
         CancellationToken cancellationToken)
     {
@@ -245,6 +255,7 @@ public static partial class VideoCatalogEndpoints
             string.IsNullOrWhiteSpace(channelId) ? null : channelId,
             NormalizeLimit(limit),
             NormalizeOffset(offset),
+            processedOnly == true,
             cancellationToken);
         return Results.Ok(videos);
     }
@@ -272,6 +283,7 @@ public static partial class VideoCatalogEndpoints
         string? channelId,
         int limit,
         int offset,
+        bool processedOnly,
         CancellationToken cancellationToken)
     {
         var query = db.Videos
@@ -281,6 +293,10 @@ public static partial class VideoCatalogEndpoints
         if (channelId is not null)
         {
             query = query.Where(x => x.ChannelId == channelId);
+        }
+        if (processedOnly)
+        {
+            query = query.Where(x => x.LatestAnalysisId != null);
         }
 
         var videos = await query
@@ -386,8 +402,11 @@ public static partial class VideoCatalogEndpoints
     private static Task<int> CountVideos(
         ApiDbContext db,
         string channelId,
-        CancellationToken cancellationToken) =>
-        db.Videos.CountAsync(x => x.ChannelId == channelId, cancellationToken);
+        CancellationToken cancellationToken,
+        bool processedOnly = false) =>
+        db.Videos.CountAsync(
+            x => x.ChannelId == channelId && (!processedOnly || x.LatestAnalysisId != null),
+            cancellationToken);
 
     private static int NormalizeLimit(int? limit) =>
         Math.Clamp(limit ?? DefaultLimit, 1, MaximumLimit);
@@ -417,6 +436,8 @@ public sealed record ChannelVideoPageResponse(
     int Offset,
     int Limit,
     int StoredVideoCount,
+    int TotalStoredVideoCount,
+    bool ProcessedOnly,
     bool HasStoredNextPage,
     bool HasRemoteNextPage,
     bool HasMore,

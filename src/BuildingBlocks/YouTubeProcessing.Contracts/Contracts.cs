@@ -195,6 +195,7 @@ public sealed record ChannelVideoMetadataV1(
     string? Description,
     string? ThumbnailUrl,
     DateTimeOffset? PublishedAt,
+    long? DurationSeconds,
     string WebpageUrl);
 
 public sealed record FetchChannelPageCompletedPayloadV1(

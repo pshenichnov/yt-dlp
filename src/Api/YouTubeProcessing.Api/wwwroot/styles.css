@@ -251,6 +251,72 @@ h1 {
   font-size: 13px;
 }
 
+.channel-video-tools {
+  display: flex;
+  gap: 14px;
+  align-items: end;
+  flex-direction: column;
+}
+
+.processed-filter {
+  display: inline-flex;
+  gap: 8px;
+  margin: 0;
+  align-items: center;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.processed-filter input {
+  width: 17px;
+  min-height: 17px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.video-state-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 10px 0 0;
+}
+
+.video-state {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.video-state.complete {
+  border-color: rgba(216, 255, 99, 0.3);
+  background: var(--accent-dark);
+  color: var(--accent);
+}
+
+.content-switcher {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.content-switcher button {
+  min-height: auto;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 5px 9px;
+}
+
+.content-switcher button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .video-list {
   display: grid;
 }
@@ -307,6 +373,37 @@ h1 {
   -webkit-line-clamp: 4;
 }
 
+.content-copy {
+  position: relative;
+}
+
+.content-copy.expanded .library-video-summary {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+
+.content-more {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  min-height: auto;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(90deg, transparent, var(--background) 30%);
+  color: var(--accent);
+  font-size: 12px;
+  padding: 2px 0 2px 34px;
+}
+
+.content-copy.expanded .content-more {
+  position: static;
+  margin-top: 8px;
+  background: transparent;
+  padding: 0;
+}
+
 .library-video-actions {
   display: flex;
   gap: 18px;
@@ -319,6 +416,20 @@ h1 {
   color: var(--text);
   font-size: 13px;
   font-weight: 700;
+}
+
+.process-video-button {
+  min-height: 36px;
+  margin: 0;
+  border-radius: 9px;
+  gap: 8px;
+  font-size: 12px;
+  padding: 0 12px;
+}
+
+.process-video-status {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .workspace {

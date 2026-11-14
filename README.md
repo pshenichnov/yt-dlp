@@ -85,8 +85,13 @@ POST /api/v1/channels/{channelId}/videos/pages
 Adding a channel queues its first 12 newest videos. The channel-video response
 is paginated, and the `videos/pages` endpoint explicitly queues the next older
 page. Channel discovery stores only the title, YouTube description, remote
-thumbnail URL, publish date, and watch URL; it does not download captions or
-thumbnails and does not schedule analysis.
+thumbnail URL, publish date, duration, and watch URL; it does not download
+captions or thumbnails and does not schedule analysis. The channel UI can
+filter to processed videos and marks transcript and summary availability;
+processed cards can switch between the YouTube description and generated
+summary. Unprocessed cards provide a `Process & summarize` action that starts
+the existing durable extraction and summary workflow and reports progress on
+the card.
 
 A local browser UI is available at `http://localhost:8080/`. Enter a YouTube
 video ID or URL and the configured API key to run a summary analysis and view
