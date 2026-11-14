@@ -83,6 +83,12 @@ public sealed class ExtractorEventConsumer(
                 $"Unsupported extractor schema version '{envelope.SchemaVersion}'.");
         }
 
+        if (envelope.MessageType is IntegrationMessageTypes.FetchChannelPageCompleted
+            or IntegrationMessageTypes.FetchChannelPageFailed)
+        {
+            return;
+        }
+
         var process = await db.Processes.SingleOrDefaultAsync(
             x => x.JobId == envelope.CorrelationId,
             context.CancellationToken);

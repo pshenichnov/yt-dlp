@@ -7,7 +7,7 @@ namespace YouTubeProcessing.Api.Tests;
 public sealed class VideoCatalogModelTests
 {
     [Fact]
-    public void VideoCatalogUsesStableYouTubeIdentifiersAndLatestAnalysis()
+    public void VideoCatalogSupportsMetadataOnlyChannelVideos()
     {
         using var db = CreateDbContext();
         var channel = db.Model.FindEntityType(typeof(ChannelEntity));
@@ -17,6 +17,9 @@ public sealed class VideoCatalogModelTests
         Assert.NotNull(video);
         Assert.Equal(nameof(ChannelEntity.Id), channel.FindPrimaryKey()!.Properties[0].Name);
         Assert.Equal(64, channel.FindProperty(nameof(ChannelEntity.Id))!.GetMaxLength());
+        Assert.Equal(100, channel.FindProperty(nameof(ChannelEntity.Handle))!.GetMaxLength());
+        Assert.True(channel.GetIndexes().Single(
+            x => x.Properties.Single().Name == nameof(ChannelEntity.Handle)).IsUnique);
         Assert.Equal(nameof(VideoEntity.Id), video.FindPrimaryKey()!.Properties[0].Name);
         Assert.Equal(32, video.FindProperty(nameof(VideoEntity.Id))!.GetMaxLength());
 
@@ -27,8 +30,14 @@ public sealed class VideoCatalogModelTests
 
         var analysisRelationship = video.GetForeignKeys().Single(
             x => x.PrincipalEntityType.ClrType == typeof(AnalysisEntity));
-        Assert.True(analysisRelationship.IsRequired);
+        Assert.False(analysisRelationship.IsRequired);
         Assert.Equal(DeleteBehavior.Restrict, analysisRelationship.DeleteBehavior);
+        Assert.True(video.FindProperty(nameof(VideoEntity.LatestAnalysisId))!.IsNullable);
+        Assert.True(video.FindProperty(nameof(VideoEntity.LastProcessedAt))!.IsNullable);
+        Assert.Equal(2048, video.FindProperty(nameof(VideoEntity.ThumbnailUrl))!.GetMaxLength());
+        Assert.Equal(
+            ChannelSyncStatuses.Ready,
+            channel.FindProperty(nameof(ChannelEntity.SyncStatus))!.GetDefaultValue());
     }
 
     private static ApiDbContext CreateDbContext()

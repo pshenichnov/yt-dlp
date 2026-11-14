@@ -26,6 +26,10 @@ const backToChannelsButton = document.querySelector("#back-to-channels");
 const selectedChannelName = document.querySelector("#selected-channel-name");
 const selectedChannelCount = document.querySelector("#selected-channel-count");
 const videoList = document.querySelector("#video-list");
+const channelForm = document.querySelector("#channel-form");
+const channelIdInput = document.querySelector("#channel-id");
+const addChannelButton = document.querySelector("#add-channel-button");
+const loadMoreVideosButton = document.querySelector("#load-more-videos");
 
 const apiKeyStorageKey = "youtube-processing-api-key";
 const stageLabels = {
@@ -40,6 +44,9 @@ const stageLabels = {
 let thumbnailObjectUrl;
 let libraryThumbnailUrls = [];
 let channels = [];
+let selectedChannel;
+let currentVideoPage;
+let nextVideoOffset = 0;
 
 apiKeyInput.value = sessionStorage.getItem(apiKeyStorageKey) ?? "";
 if (apiKeyInput.value) {
@@ -54,7 +61,51 @@ apiKeyInput.addEventListener("keydown", (event) => {
   }
 });
 
-backToChannelsButton.addEventListener("click", showChannelList);
+backToChannelsButton.addEventListener("click", () => showChannelList(true));
+loadMoreVideosButton.addEventListener("click", loadMoreChannelVideos);
+window.addEventListener("popstate", async () => {
+  const reference = getRequestedChannelReference();
+  if (!reference) {
+    showChannelList(false);
+    return;
+  }
+
+  const channel = findChannel(reference);
+  if (channel) await loadChannelVideos(channel, 0, false, false);
+});
+
+channelForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const channelId = channelIdInput.value.trim();
+  const apiKey = apiKeyInput.value.trim();
+  if (!channelId || !apiKey) {
+    showLibraryError("Enter a YouTube channel ID and your local API key.");
+    return;
+  }
+
+  saveApiKey(apiKey);
+  libraryError.hidden = true;
+  addChannelButton.disabled = true;
+  libraryLoading.textContent = "Loading the newest channel videos…";
+  libraryLoading.hidden = false;
+  try {
+    let channel = await fetchJson("/api/v1/channels", apiKey, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channelId })
+    });
+    channel = await waitForChannelPage(channel, apiKey);
+    channelIdInput.value = "";
+    await loadChannels({ preserveErrors: true, openRequestedChannel: false });
+    await loadChannelVideos(channel);
+  } catch (error) {
+    showLibraryError(error instanceof Error ? error.message : "The channel could not be added.");
+  } finally {
+    addChannelButton.disabled = false;
+    libraryLoading.textContent = "Loading channels…";
+    libraryLoading.hidden = true;
+  }
+});
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -86,7 +137,7 @@ form.addEventListener("submit", async (event) => {
     });
 
     await pollJob(created, apiKey);
-    await loadChannels({ preserveErrors: true });
+    await loadChannels({ preserveErrors: true, openRequestedChannel: false });
   } catch (error) {
     showError(error instanceof Error ? error.message : "Analysis failed.");
   } finally {
@@ -108,6 +159,9 @@ async function loadChannels(options = {}) {
   try {
     channels = await fetchJson("/api/v1/channels?limit=200", apiKey);
     renderChannels(channels);
+    if (options.openRequestedChannel !== false) {
+      await openRequestedChannel();
+    }
   } catch (error) {
     showLibraryError(error instanceof Error ? error.message : "The library could not be loaded.");
   } finally {
@@ -123,8 +177,8 @@ function renderChannels(items) {
 
   const totalVideos = items.reduce((total, channel) => total + channel.videoCount, 0);
   librarySummary.textContent = items.length
-    ? `${formatCount(items.length, "channel")} · ${formatCount(totalVideos, "processed video")}`
-    : "No processed videos yet. Process a video below to start your library.";
+    ? `${formatCount(items.length, "channel")} · ${formatCount(totalVideos, "video")}`
+    : "No channels yet. Add one by its YouTube channel ID.";
 
   for (const channel of items) {
     const card = document.createElement("button");
@@ -146,18 +200,26 @@ function renderChannels(items) {
   }
 }
 
-async function loadChannelVideos(channel) {
+async function loadChannelVideos(
+  channel,
+  offset = 0,
+  append = false,
+  updateUrl = !append) {
   const apiKey = apiKeyInput.value.trim();
   if (!apiKey) return;
 
+  selectedChannel = channel;
+  if (updateUrl && offset === 0) setChannelUrl(channel);
   libraryError.hidden = true;
   libraryLoading.textContent = `Loading ${channel.name || "channel"}…`;
   setLibraryBusy(true);
 
   try {
     const separator = channel.videosUrl.includes("?") ? "&" : "?";
-    const videos = await fetchJson(`${channel.videosUrl}${separator}limit=200`, apiKey);
-    renderChannelVideos(channel, videos, apiKey);
+    const page = await fetchJson(
+      `${channel.videosUrl}${separator}limit=12&offset=${offset}`,
+      apiKey);
+    renderChannelVideos(channel, page, apiKey, append);
   } catch (error) {
     showLibraryError(error instanceof Error ? error.message : "The channel videos could not be loaded.");
   } finally {
@@ -166,22 +228,32 @@ async function loadChannelVideos(channel) {
   }
 }
 
-function renderChannelVideos(channel, videos, apiKey) {
-  releaseLibraryThumbnails();
-  videoList.replaceChildren();
+function renderChannelVideos(channel, page, apiKey, append) {
+  if (!append) {
+    releaseLibraryThumbnails();
+    videoList.replaceChildren();
+  }
   channelList.hidden = true;
   channelVideos.hidden = false;
   selectedChannelName.textContent = channel.name || "Unknown channel";
-  selectedChannelCount.textContent = `${formatCount(videos.length, "video")} · newest processed first`;
+  currentVideoPage = page;
+  nextVideoOffset = page.nextOffset ?? 0;
+  const renderedVideoIds = new Set(
+    [...videoList.querySelectorAll("[data-video-id]")]
+      .map((card) => card.dataset.videoId));
 
-  for (const item of videos) {
+  for (const item of page.items) {
+    if (renderedVideoIds.has(item.video.videoId)) continue;
+
     const card = document.createElement("article");
     card.className = "library-video-card";
+    card.dataset.videoId = item.video.videoId;
+    renderedVideoIds.add(item.video.videoId);
     card.innerHTML = `
       <div class="library-thumbnail"><span>Loading thumbnail…</span></div>
       <div>
         <div class="library-video-meta">
-          <span>Processed <time data-kind="processed"></time></span>
+          <span data-kind="processed"></span>
           <span data-kind="published"></span>
         </div>
         <h3 class="library-video-title"></h3>
@@ -192,17 +264,25 @@ function renderChannelVideos(channel, videos, apiKey) {
       </div>`;
 
     card.querySelector(".library-video-title").textContent = item.video.title;
-    card.querySelector(".library-video-summary").textContent = item.summary || "No summary was saved.";
+    card.querySelector(".library-video-summary").textContent =
+      item.description || item.summary || "No description is available.";
 
-    const processedTime = card.querySelector('[data-kind="processed"]');
-    processedTime.dateTime = item.lastProcessedAt;
-    processedTime.textContent = formatDateTime(item.lastProcessedAt);
+    const processed = card.querySelector('[data-kind="processed"]');
+    if (item.lastProcessedAt) {
+      const processedTime = document.createElement("time");
+      processedTime.dateTime = item.lastProcessedAt;
+      processedTime.textContent = `Processed ${formatDateTime(item.lastProcessedAt)}`;
+      processed.append(processedTime);
+    } else {
+      processed.textContent = "Metadata only";
+    }
 
     const published = card.querySelector('[data-kind="published"]');
-    if (item.video.publishedAt) {
+    const publishedAt = item.video.publishedAt ?? item.video.uploadDate;
+    if (publishedAt) {
       const publishedTime = document.createElement("time");
-      publishedTime.dateTime = item.video.publishedAt;
-      publishedTime.textContent = `Published ${formatShortDate(item.video.publishedAt)}`;
+      publishedTime.dateTime = publishedAt;
+      publishedTime.textContent = `Published ${formatShortDate(publishedAt)}`;
       published.append(publishedTime);
     } else {
       published.remove();
@@ -223,23 +303,130 @@ function renderChannelVideos(channel, videos, apiKey) {
     loadLibraryThumbnail(card.querySelector(".library-thumbnail"), item, apiKey);
   }
 
-  channelVideos.scrollIntoView({ behavior: "smooth", block: "start" });
+  const shownCount = videoList.childElementCount;
+  selectedChannelCount.textContent =
+    `${shownCount} shown · ${formatCount(page.storedVideoCount, "video")} loaded in DB · newest first`;
+  loadMoreVideosButton.hidden = !page.hasMore;
+  loadMoreVideosButton.disabled = false;
+  loadMoreVideosButton.textContent = page.hasStoredNextPage
+    ? "Show older loaded videos"
+    : "Fetch older videos from YouTube";
+
+  if (!append) channelVideos.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function showChannelList() {
+async function loadMoreChannelVideos() {
+  if (!selectedChannel || !currentVideoPage) return;
+  const apiKey = apiKeyInput.value.trim();
+  loadMoreVideosButton.disabled = true;
+  libraryError.hidden = true;
+  try {
+    if (currentVideoPage.hasStoredNextPage) {
+      await loadChannelVideos(selectedChannel, nextVideoOffset, true);
+      return;
+    }
+
+    if (currentVideoPage.hasRemoteNextPage) {
+      let channel = await fetchJson(
+        `/api/v1/channels/${encodeURIComponent(selectedChannel.channelId)}/videos/pages`,
+        apiKey,
+        { method: "POST" });
+      channel = await waitForChannelPage(channel, apiKey);
+      selectedChannel = channel;
+      await loadChannelVideos(channel, nextVideoOffset, true);
+      return;
+    }
+
+    loadMoreVideosButton.hidden = true;
+  } catch (error) {
+    loadMoreVideosButton.disabled = false;
+    showLibraryError(error instanceof Error ? error.message : "Older videos could not be loaded.");
+  }
+}
+
+async function waitForChannelPage(channel, apiKey) {
+  const deadline = Date.now() + 2 * 60 * 1000;
+  let current = channel;
+  while (current.syncStatus === "queued" && Date.now() < deadline) {
+    await delay(750);
+    current = await fetchJson(
+      current.statusUrl || `/api/v1/channels/${encodeURIComponent(current.channelId)}`,
+      apiKey);
+  }
+  if (current.syncStatus === "failed") {
+    throw new Error(current.lastSyncError || "YouTube channel metadata could not be loaded.");
+  }
+  if (current.syncStatus === "queued") {
+    throw new Error("The channel page is still loading. Try again shortly.");
+  }
+  return current;
+}
+
+function showChannelList(updateUrl = false) {
   releaseLibraryThumbnails();
+  selectedChannel = undefined;
+  currentVideoPage = undefined;
   channelVideos.hidden = true;
+  loadMoreVideosButton.hidden = true;
   channelList.hidden = false;
   libraryError.hidden = true;
   librarySummary.textContent = channels.length
-    ? `${formatCount(channels.length, "channel")} · ${formatCount(channels.reduce((sum, channel) => sum + channel.videoCount, 0), "processed video")}`
-    : "No processed videos yet. Process a video below to start your library.";
+    ? `${formatCount(channels.length, "channel")} · ${formatCount(channels.reduce((sum, channel) => sum + channel.videoCount, 0), "video")}`
+    : "No channels yet. Add one by its YouTube channel ID.";
+  if (updateUrl) history.pushState({}, "", window.location.pathname);
+}
+
+async function openRequestedChannel() {
+  const reference = getRequestedChannelReference();
+  if (!reference) return;
+
+  const channel = findChannel(reference);
+  if (!channel) {
+    showLibraryError(`Channel '${reference}' is not in the library.`);
+    return;
+  }
+
+  await loadChannelVideos(channel, 0, false, false);
+}
+
+function findChannel(reference) {
+  const normalized = normalizeChannelReference(reference);
+  return channels.find((channel) =>
+    normalizeChannelReference(channel.channelId) === normalized ||
+    normalizeChannelReference(channel.handle) === normalized ||
+    normalizeChannelReference(channel.name) === normalized);
+}
+
+function getRequestedChannelReference() {
+  return new URLSearchParams(window.location.search).get("channel-id")?.trim();
+}
+
+function normalizeChannelReference(value) {
+  return (value || "").trim().replace(/^@/, "").toLocaleLowerCase();
+}
+
+function setChannelUrl(channel) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("channel-id", channel.handle || channel.channelId);
+  history.pushState({}, "", `${url.pathname}${url.search}`);
 }
 
 async function loadLibraryThumbnail(container, item, apiKey) {
   const artifactUrl = getArtifactUrl(item.thumbnail);
-  if (!artifactUrl) {
+  if (!artifactUrl && !item.thumbnailUrl) {
     container.textContent = "Thumbnail unavailable";
+    return;
+  }
+
+  if (!artifactUrl) {
+    const image = document.createElement("img");
+    image.src = item.thumbnailUrl;
+    image.alt = `Thumbnail for ${item.video.title}`;
+    image.referrerPolicy = "no-referrer";
+    image.addEventListener("error", () => {
+      container.textContent = "Thumbnail unavailable";
+    }, { once: true });
+    container.replaceChildren(image);
     return;
   }
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Create a concise AI summary from a YouTube video transcript.">
   <title>Video Brief</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=20261114-3">
 </head>
 <body>
   <header class="site-header">
@@ -21,15 +21,15 @@
       <p class="eyebrow">Transcript-powered analysis</p>
       <h1 id="page-title">Understand a video<br>without watching it first.</h1>
       <p class="intro-copy">
-        Browse the videos you have already processed, grouped by channel, or
-        add another YouTube video to the library.
+        Add channels, browse their newest videos a page at a time, or run a
+        transcript analysis for an individual video.
       </p>
     </section>
 
     <section id="library" class="library" aria-labelledby="library-title">
       <div class="library-heading">
         <div>
-          <p class="eyebrow">Processed library</p>
+          <p class="eyebrow">Channel library</p>
           <h2 id="library-title">Channels</h2>
           <p id="library-summary" class="section-copy">
             Enter your API key to load saved channels.
@@ -54,6 +54,21 @@
       </div>
 
       <div id="library-error" class="error-panel" role="alert" hidden></div>
+      <form id="channel-form" class="channel-form">
+        <div class="field field-wide">
+          <label for="channel-id">Add a YouTube channel by ID</label>
+          <input
+            id="channel-id"
+            name="channel-id"
+            type="text"
+            placeholder="UC_x5XG1OV2P6uZZ5FSM9Ttw"
+            autocomplete="off"
+            spellcheck="false"
+            required>
+          <p class="field-note">The first 12 videos are loaded now. Load older pages only when you need them.</p>
+        </div>
+        <button id="add-channel-button" type="submit">Add channel</button>
+      </form>
       <p id="library-loading" class="library-state" hidden>Loading channels…</p>
       <div id="channel-list" class="channel-grid"></div>
 
@@ -69,6 +84,9 @@
           <span id="selected-channel-count" class="video-count"></span>
         </div>
         <div id="video-list" class="video-list"></div>
+        <button id="load-more-videos" class="secondary-button load-more-button" type="button" hidden>
+          Load older videos
+        </button>
       </section>
     </section>
 
@@ -139,6 +157,6 @@
     Results and credentials stay within your locally running platform.
   </footer>
 
-  <script src="/app.js" defer></script>
+  <script src="/app.js?v=20261114-5" defer></script>
 </body>
 </html>

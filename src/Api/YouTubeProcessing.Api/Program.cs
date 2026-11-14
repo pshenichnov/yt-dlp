@@ -57,6 +57,7 @@ builder.Services.AddMassTransit(configurator =>
     configurator.AddConsumer<JobStageChangedConsumer>();
     configurator.AddConsumer<VideoAnalysisCompletedConsumer>();
     configurator.AddConsumer<VideoAnalysisFailedConsumer>();
+    configurator.AddConsumer<ChannelCatalogEventConsumer>();
     configurator.AddEntityFrameworkOutbox<ApiDbContext>(outbox =>
     {
         outbox.UsePostgres();
@@ -75,6 +76,11 @@ builder.Services.AddMassTransit(configurator =>
                 host.Password(rabbitSettings["Password"] ?? "guest");
             });
 
+        rabbit.AddRawJsonSerializer(
+            RawSerializerOptions.AddTransportHeaders | RawSerializerOptions.CopyHeaders);
+        rabbit.Send<IntegrationEnvelopeV1<FetchChannelPagePayloadV1>>(topology =>
+            topology.UseSerializer("application/json"));
+
         rabbit.ReceiveEndpoint(QueueNames.ApiProjection, endpoint =>
         {
             endpoint.SetQuorumQueue();
@@ -87,6 +93,21 @@ builder.Services.AddMassTransit(configurator =>
             endpoint.ConfigureConsumer<JobStageChangedConsumer>(context);
             endpoint.ConfigureConsumer<VideoAnalysisCompletedConsumer>(context);
             endpoint.ConfigureConsumer<VideoAnalysisFailedConsumer>(context);
+        });
+
+        rabbit.ReceiveEndpoint(QueueNames.ChannelCatalogEvents, endpoint =>
+        {
+            endpoint.SetQuorumQueue();
+            endpoint.PrefetchCount = 4;
+            endpoint.ConfigureConsumeTopology = false;
+            endpoint.Bind(QueueNames.ExtractorEvents);
+            endpoint.UseRawJsonDeserializer(RawSerializerOptions.All, isDefault: true);
+            endpoint.UseMessageRetry(retry => retry.Intervals(
+                TimeSpan.FromSeconds(1),
+                TimeSpan.FromSeconds(5),
+                TimeSpan.FromSeconds(15)));
+            endpoint.UseEntityFrameworkOutbox<ApiDbContext>(context);
+            endpoint.ConfigureConsumer<ChannelCatalogEventConsumer>(context);
         });
     });
 });
@@ -127,7 +148,11 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+        context.Context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate"
+});
 app.UseRateLimiter();
 app.UseMiddleware<ApiKeyMiddleware>();
 app.UseSwaggerUI(options =>

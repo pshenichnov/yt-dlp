@@ -31,7 +31,8 @@ public sealed class PlatformHealthService(
             ["api"] = MicroserviceHealthEvaluator.Evaluate(
                 rabbitResult.Snapshot,
                 rabbitResult.Health.DurationMilliseconds,
-                QueueNames.ApiProjection),
+                QueueNames.ApiProjection,
+                QueueNames.ChannelCatalogEvents),
             ["postgres"] = postgres,
             ["rabbitMq"] = rabbitResult.Health,
             ["blobStore"] = blobStore,

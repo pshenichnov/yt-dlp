@@ -96,7 +96,8 @@ public sealed class VideoAnalysisCompletedConsumer(ApiDbContext db)
                     Id = channelId,
                     Name = message.Video.ChannelName,
                     CreatedAt = message.CompletedAt,
-                    UpdatedAt = message.CompletedAt
+                    UpdatedAt = message.CompletedAt,
+                    HasMoreVideos = false
                 });
             }
             else
@@ -131,12 +132,13 @@ public sealed class VideoAnalysisCompletedConsumer(ApiDbContext db)
                 ViewCount = message.Video.ViewCount,
                 LikeCount = message.Video.LikeCount,
                 FirstProcessedAt = message.CompletedAt,
-                LastProcessedAt = message.CompletedAt
+                LastProcessedAt = message.CompletedAt,
+                DiscoveredAt = message.CompletedAt
             });
             return;
         }
 
-        if (message.CompletedAt < video.FirstProcessedAt)
+        if (video.FirstProcessedAt is null || message.CompletedAt < video.FirstProcessedAt)
         {
             video.FirstProcessedAt = message.CompletedAt;
         }
@@ -202,5 +204,115 @@ public sealed class VideoAnalysisFailedConsumer(ApiDbContext db)
         job.UpdatedAt = message.FailedAt;
         job.CompletedAt = message.FailedAt;
         await db.SaveChangesAsync(context.CancellationToken);
+    }
+}
+
+public sealed class ChannelCatalogEventConsumer(
+    ApiDbContext db,
+    ILogger<ChannelCatalogEventConsumer> logger) : IConsumer<ExtractorEventEnvelopeV1>
+{
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    public async Task Consume(ConsumeContext<ExtractorEventEnvelopeV1> context)
+    {
+        var envelope = context.Message;
+        switch (envelope.MessageType)
+        {
+            case IntegrationMessageTypes.FetchChannelPageCompleted:
+                await CompletePage(envelope, context.CancellationToken);
+                break;
+            case IntegrationMessageTypes.FetchChannelPageFailed:
+                await FailPage(envelope, context.CancellationToken);
+                break;
+        }
+    }
+
+    private async Task CompletePage(
+        ExtractorEventEnvelopeV1 envelope,
+        CancellationToken cancellationToken)
+    {
+        var result = envelope.Payload.Deserialize<FetchChannelPageCompletedPayloadV1>(JsonOptions)
+            ?? throw new InvalidOperationException("Channel page completion payload is invalid.");
+        var channel = await db.Channels.SingleOrDefaultAsync(
+            x => x.Id == result.ChannelId,
+            cancellationToken);
+        if (channel is null || channel.PendingRequestId != result.RequestId)
+        {
+            logger.LogWarning(
+                "Ignoring stale channel page {RequestId} for {ChannelId}",
+                result.RequestId,
+                result.ChannelId);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.ChannelName))
+        {
+            channel.Name = result.ChannelName;
+        }
+        if (!string.IsNullOrWhiteSpace(result.ChannelHandle))
+        {
+            channel.Handle = result.ChannelHandle;
+        }
+
+        foreach (var item in result.Videos)
+        {
+            var video = await db.Videos.SingleOrDefaultAsync(
+                x => x.Id == item.VideoId,
+                cancellationToken);
+            if (video is null)
+            {
+                db.Videos.Add(new VideoEntity
+                {
+                    Id = item.VideoId,
+                    ChannelId = channel.Id,
+                    Title = item.Title,
+                    Description = item.Description,
+                    WebpageUrl = item.WebpageUrl,
+                    ThumbnailUrl = item.ThumbnailUrl,
+                    PublishedAt = item.PublishedAt,
+                    DiscoveredAt = envelope.OccurredAt
+                });
+                continue;
+            }
+
+            video.ChannelId = channel.Id;
+            video.Title = item.Title;
+            video.Description = item.Description;
+            video.WebpageUrl = item.WebpageUrl;
+            video.ThumbnailUrl = item.ThumbnailUrl;
+            video.PublishedAt = item.PublishedAt;
+        }
+
+        channel.SyncStatus = ChannelSyncStatuses.Ready;
+        channel.PendingRequestId = null;
+        channel.NextPageStartIndex = result.NextStartIndex;
+        channel.HasMoreVideos = result.HasMore;
+        channel.LastSyncError = null;
+        channel.UpdatedAt = envelope.OccurredAt;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task FailPage(
+        ExtractorEventEnvelopeV1 envelope,
+        CancellationToken cancellationToken)
+    {
+        var failure = envelope.Payload.Deserialize<FetchChannelPageFailedPayloadV1>(JsonOptions)
+            ?? throw new InvalidOperationException("Channel page failure payload is invalid.");
+        var channel = await db.Channels.SingleOrDefaultAsync(
+            x => x.Id == failure.ChannelId,
+            cancellationToken);
+        if (channel is null || channel.PendingRequestId != failure.RequestId)
+        {
+            return;
+        }
+
+        channel.SyncStatus = ChannelSyncStatuses.Failed;
+        channel.PendingRequestId = null;
+        channel.LastSyncError = failure.ErrorMessage;
+        channel.UpdatedAt = envelope.OccurredAt;
+        await db.SaveChangesAsync(cancellationToken);
     }
 }

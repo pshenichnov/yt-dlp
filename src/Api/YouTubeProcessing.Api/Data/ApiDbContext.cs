@@ -52,6 +52,13 @@ public sealed class ApiDbContext(DbContextOptions<ApiDbContext> options) : DbCon
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasMaxLength(64);
             entity.Property(x => x.Name).HasMaxLength(1000);
+            entity.Property(x => x.Handle).HasMaxLength(100);
+            entity.HasIndex(x => x.Handle).IsUnique();
+            entity.Property(x => x.SyncStatus)
+                .HasMaxLength(32)
+                .HasDefaultValue(ChannelSyncStatuses.Ready);
+            entity.Property(x => x.NextPageStartIndex).HasDefaultValue(1);
+            entity.Property(x => x.LastSyncError).HasMaxLength(2000);
             entity.HasIndex(x => x.UpdatedAt);
         });
 
@@ -62,6 +69,8 @@ public sealed class ApiDbContext(DbContextOptions<ApiDbContext> options) : DbCon
             entity.Property(x => x.ChannelId).HasMaxLength(64);
             entity.Property(x => x.Title).HasMaxLength(1000);
             entity.Property(x => x.WebpageUrl).HasMaxLength(2048);
+            entity.Property(x => x.ThumbnailUrl).HasMaxLength(2048);
+            entity.Property(x => x.DiscoveredAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.HasIndex(x => x.ChannelId);
             entity.HasIndex(x => x.LatestAnalysisId);
             entity.HasIndex(x => x.LastProcessedAt);
@@ -143,8 +152,14 @@ public sealed class ChannelEntity
 {
     public string Id { get; set; } = string.Empty;
     public string? Name { get; set; }
+    public string? Handle { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+    public string SyncStatus { get; set; } = ChannelSyncStatuses.Ready;
+    public Guid? PendingRequestId { get; set; }
+    public int NextPageStartIndex { get; set; } = 1;
+    public bool HasMoreVideos { get; set; }
+    public string? LastSyncError { get; set; }
     public ICollection<VideoEntity> Videos { get; set; } = [];
 }
 
@@ -152,17 +167,26 @@ public sealed class VideoEntity
 {
     public string Id { get; set; } = string.Empty;
     public string? ChannelId { get; set; }
-    public Guid LatestAnalysisId { get; set; }
+    public Guid? LatestAnalysisId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string WebpageUrl { get; set; } = string.Empty;
+    public string? ThumbnailUrl { get; set; }
     public DateTimeOffset? PublishedAt { get; set; }
     public long? DurationSeconds { get; set; }
     public long? ViewCount { get; set; }
     public long? LikeCount { get; set; }
-    public DateTimeOffset FirstProcessedAt { get; set; }
-    public DateTimeOffset LastProcessedAt { get; set; }
+    public DateTimeOffset DiscoveredAt { get; set; }
+    public DateTimeOffset? FirstProcessedAt { get; set; }
+    public DateTimeOffset? LastProcessedAt { get; set; }
     public ChannelEntity? Channel { get; set; }
+}
+
+public static class ChannelSyncStatuses
+{
+    public const string Queued = "queued";
+    public const string Ready = "ready";
+    public const string Failed = "failed";
 }
 
 public sealed class IdempotencyRecord

@@ -36,6 +36,7 @@ public static class QueueNames
     public const string ApiProjection = "youtube.api-projection.v1";
     public const string ExtractorCommands = "youtube.extract-video.commands.v1";
     public const string ExtractorEvents = "youtube.extract-video.events.v1";
+    public const string ChannelCatalogEvents = "youtube.channel-catalog.events.v1";
 }
 
 public static class JobStatuses
@@ -182,6 +183,36 @@ public sealed record ExtractVideoFailedPayloadV1(
     string ErrorMessage,
     bool IsTransient);
 
+public sealed record FetchChannelPagePayloadV1(
+    Guid RequestId,
+    string ChannelId,
+    int StartIndex,
+    int PageSize);
+
+public sealed record ChannelVideoMetadataV1(
+    string VideoId,
+    string Title,
+    string? Description,
+    string? ThumbnailUrl,
+    DateTimeOffset? PublishedAt,
+    string WebpageUrl);
+
+public sealed record FetchChannelPageCompletedPayloadV1(
+    Guid RequestId,
+    string ChannelId,
+    string? ChannelName,
+    string? ChannelHandle,
+    IReadOnlyList<ChannelVideoMetadataV1> Videos,
+    int NextStartIndex,
+    bool HasMore);
+
+public sealed record FetchChannelPageFailedPayloadV1(
+    Guid RequestId,
+    string ChannelId,
+    string ErrorCode,
+    string ErrorMessage,
+    bool IsTransient);
+
 public sealed record IntegrationEnvelopeV1<TPayload>(
     string SchemaVersion,
     Guid MessageId,
@@ -205,4 +236,7 @@ public static class IntegrationMessageTypes
     public const string ExtractVideo = "extract-video";
     public const string ExtractVideoCompleted = "extract-video-completed";
     public const string ExtractVideoFailed = "extract-video-failed";
+    public const string FetchChannelPage = "fetch-channel-page";
+    public const string FetchChannelPageCompleted = "fetch-channel-page-completed";
+    public const string FetchChannelPageFailed = "fetch-channel-page-failed";
 }

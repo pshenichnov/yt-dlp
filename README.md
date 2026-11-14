@@ -68,24 +68,31 @@ curl -i http://localhost:8080/api/v1/video-analyses \
 Poll the returned `statusUrl`; when it reports `completed`, request the
 `resultUrl`. Artifact links stream through the authenticated API.
 
-Completed jobs are also retained in a video catalog. The catalog groups
-manually submitted videos by their YouTube channel and exposes the latest
-summary, transcript artifact, and thumbnail artifact:
+Completed jobs are retained in a video catalog. Channels can also be added by
+their YouTube channel ID; this stores metadata-only videos without starting a
+transcript or analysis job:
 
 ```text
 GET /api/v1/videos
 GET /api/v1/videos/{videoId}
+POST /api/v1/channels
 GET /api/v1/channels
+GET /api/v1/channels/{channelId}
 GET /api/v1/channels/{channelId}/videos
+POST /api/v1/channels/{channelId}/videos/pages
 ```
 
-The catalog does not discover channel videos or schedule processing
-automatically.
+Adding a channel queues its first 12 newest videos. The channel-video response
+is paginated, and the `videos/pages` endpoint explicitly queues the next older
+page. Channel discovery stores only the title, YouTube description, remote
+thumbnail URL, publish date, and watch URL; it does not download captions or
+thumbnails and does not schedule analysis.
 
 A local browser UI is available at `http://localhost:8080/`. Enter a YouTube
 video ID or URL and the configured API key to run a summary analysis and view
 the resulting thumbnail and description. The browser retains the API key only
-for the current tab.
+for the current tab. A saved channel can be opened directly by its handle or
+canonical ID, for example `/?channel-id=Emmanueltrades`.
 
 `GET /health` returns aggregate status for the API, PostgreSQL, RabbitMQ,
 MinIO, Orchestrator, Extractor, and the optional Analyzer. Worker status is

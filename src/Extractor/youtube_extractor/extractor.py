@@ -11,7 +11,12 @@ from typing import Any
 import webvtt
 
 from .config import Settings
-from .contracts import ExtractVideoPayload, VideoMetadata
+from .contracts import (
+    ChannelVideoMetadata,
+    ExtractVideoPayload,
+    FetchChannelPagePayload,
+    VideoMetadata,
+)
 
 
 class ExtractionError(Exception):
@@ -28,6 +33,15 @@ class ExtractionFiles:
     caption: Path
     segments: Path
     thumbnail: Path
+
+
+@dataclass(frozen=True)
+class ChannelPage:
+    channel_name: str | None
+    channel_handle: str | None
+    videos: list[ChannelVideoMetadata]
+    next_start_index: int
+    has_more: bool
 
 
 class YtDlpExtractor:
@@ -102,6 +116,65 @@ class YtDlpExtractor:
             caption=caption,
             segments=segments,
             thumbnail=thumbnail,
+        )
+
+    async def fetch_channel_page(
+        self, request: FetchChannelPagePayload, work_dir: Path
+    ) -> ChannelPage:
+        url = f"https://www.youtube.com/channel/{request.channel_id}/videos"
+        last_index = request.start_index + request.page_size
+        metadata_raw = await self._run(
+            [
+                "yt-dlp",
+                "--dump-json",
+                "--skip-download",
+                "--lazy-playlist",
+                "--playlist-start",
+                str(request.start_index),
+                "--playlist-end",
+                str(last_index),
+                "--no-warnings",
+                url,
+            ],
+            work_dir,
+        )
+
+        entries: list[dict[str, Any]] = []
+        try:
+            for line in metadata_raw.splitlines():
+                if line.strip():
+                    entries.append(json.loads(line))
+        except json.JSONDecodeError as error:
+            raise ExtractionError(
+                "invalid_channel_metadata",
+                "yt-dlp returned invalid channel metadata.",
+            ) from error
+
+        has_more = len(entries) > request.page_size
+        selected = entries[: request.page_size]
+        videos = [to_channel_video_metadata(item) for item in selected]
+        channel_name = next(
+            (
+                _as_str(item.get("channel") or item.get("uploader"))
+                for item in selected
+                if item.get("channel") or item.get("uploader")
+            ),
+            None,
+        )
+        channel_handle = next(
+            (
+                normalize_channel_handle(_as_str(item.get("uploader_id")))
+                for item in selected
+                if item.get("uploader_id")
+            ),
+            None,
+        )
+        return ChannelPage(
+            channel_name=channel_name,
+            channel_handle=channel_handle,
+            videos=videos,
+            next_start_index=request.start_index + len(videos),
+            has_more=has_more,
         )
 
     async def _run(self, args: list[str], cwd: Path) -> str:
@@ -241,6 +314,62 @@ def to_metadata(info: dict[str, Any], video_id: str) -> VideoMetadata:
             or f"https://www.youtube.com/watch?v={video_id}"
         ),
     )
+
+
+def to_channel_video_metadata(info: dict[str, Any]) -> ChannelVideoMetadata:
+    video_id = str(info.get("id") or "")
+    if not video_id:
+        raise ExtractionError(
+            "invalid_channel_metadata", "A channel video did not include an ID."
+        )
+    return ChannelVideoMetadata(
+        video_id=video_id,
+        title=str(info.get("title") or "Untitled YouTube video")[:1000],
+        description=_as_str(info.get("description")),
+        thumbnail_url=best_thumbnail_url(info),
+        published_at=parse_upload_date(info.get("upload_date")),
+        webpage_url=str(
+            info.get("webpage_url")
+            or f"https://www.youtube.com/watch?v={video_id}"
+        ),
+    )
+
+
+def best_thumbnail_url(info: dict[str, Any]) -> str | None:
+    thumbnails = info.get("thumbnails")
+    if isinstance(thumbnails, list):
+        candidates = [
+            item
+            for item in thumbnails
+            if isinstance(item, dict) and isinstance(item.get("url"), str)
+        ]
+        if candidates:
+            best = max(
+                candidates,
+                key=lambda item: (
+                    _as_int(item.get("width")) or 0,
+                    _as_int(item.get("height")) or 0,
+                    _as_int(item.get("preference")) or 0,
+                ),
+            )
+            return str(best["url"])
+    return _as_str(info.get("thumbnail"))
+
+
+def parse_upload_date(value: Any) -> datetime | None:
+    if isinstance(value, str) and len(value) == 8:
+        try:
+            return datetime.strptime(value, "%Y%m%d").replace(tzinfo=timezone.utc)
+        except ValueError:
+            return None
+    return None
+
+
+def normalize_channel_handle(value: str | None) -> str | None:
+    if not value:
+        return None
+    normalized = value.strip().removeprefix("@").strip()
+    return normalized[:100] or None
 
 
 def _as_int(value: Any) -> int | None:

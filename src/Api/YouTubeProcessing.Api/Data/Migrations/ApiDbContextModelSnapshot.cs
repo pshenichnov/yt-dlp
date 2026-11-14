@@ -325,14 +325,43 @@ namespace YouTubeProcessing.Api.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Handle")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("HasMoreVideos")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LastSyncError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<string>("Name")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("NextPageStartIndex")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
+                    b.Property<Guid?>("PendingRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SyncStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("ready");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Handle")
+                        .IsUnique();
 
                     b.HasIndex("UpdatedAt");
 
@@ -419,16 +448,21 @@ namespace YouTubeProcessing.Api.Data.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<DateTimeOffset>("DiscoveredAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
                     b.Property<long?>("DurationSeconds")
                         .HasColumnType("bigint");
 
-                    b.Property<DateTimeOffset>("FirstProcessedAt")
+                    b.Property<DateTimeOffset?>("FirstProcessedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTimeOffset>("LastProcessedAt")
+                    b.Property<DateTimeOffset?>("LastProcessedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("LatestAnalysisId")
+                    b.Property<Guid?>("LatestAnalysisId")
                         .HasColumnType("uuid");
 
                     b.Property<long?>("LikeCount")
@@ -436,6 +470,10 @@ namespace YouTubeProcessing.Api.Data.Migrations
 
                     b.Property<DateTimeOffset?>("PublishedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ThumbnailUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -483,8 +521,7 @@ namespace YouTubeProcessing.Api.Data.Migrations
                     b.HasOne("YouTubeProcessing.Api.Data.AnalysisEntity", null)
                         .WithMany()
                         .HasForeignKey("LatestAnalysisId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Channel");
                 });

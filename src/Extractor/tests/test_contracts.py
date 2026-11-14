@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from uuid import uuid4
 
 from jsonschema import Draft202012Validator, FormatChecker
 
@@ -50,3 +51,26 @@ def test_terminal_examples_match_python_contract() -> None:
         "extract-video.failed.v1.example.json",
     ):
         EventEnvelope.model_validate_json((root / name).read_text(encoding="utf-8"))
+
+
+def test_channel_page_command_matches_worker_contract() -> None:
+    request_id = uuid4()
+    envelope = CommandEnvelope.model_validate(
+        {
+            "schemaVersion": "1",
+            "messageId": str(uuid4()),
+            "correlationId": str(request_id),
+            "causationId": None,
+            "messageType": "fetch-channel-page",
+            "occurredAt": "2026-11-14T12:00:00Z",
+            "payload": {
+                "requestId": str(request_id),
+                "channelId": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
+                "startIndex": 13,
+                "pageSize": 12,
+            },
+        }
+    )
+
+    assert envelope.message_type == "fetch-channel-page"
+    assert envelope.payload.start_index == 13

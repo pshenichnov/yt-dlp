@@ -17,6 +17,9 @@ from .contracts import (
     EventEnvelope,
     ExtractCompletedPayload,
     ExtractFailedPayload,
+    FetchChannelPageCompletedPayload,
+    FetchChannelPageFailedPayload,
+    FetchChannelPagePayload,
 )
 from .database import ExtractorDatabase
 from .extractor import ExtractionError, YtDlpExtractor
@@ -104,6 +107,59 @@ class ExtractorWorker:
                 return
 
             event_id = uuid4()
+            if isinstance(envelope.payload, FetchChannelPagePayload):
+                try:
+                    with tempfile.TemporaryDirectory(
+                        prefix="youtube-channel-page-"
+                    ) as directory:
+                        page = await self._extractor.fetch_channel_page(
+                            envelope.payload, Path(directory)
+                        )
+                    event = EventEnvelope(
+                        message_id=event_id,
+                        correlation_id=envelope.correlation_id,
+                        causation_id=envelope.message_id,
+                        message_type="fetch-channel-page-completed",
+                        occurred_at=datetime.now(timezone.utc),
+                        payload=FetchChannelPageCompletedPayload(
+                            request_id=envelope.payload.request_id,
+                            channel_id=envelope.payload.channel_id,
+                            channel_name=page.channel_name,
+                            channel_handle=page.channel_handle,
+                            videos=page.videos,
+                            next_start_index=page.next_start_index,
+                            has_more=page.has_more,
+                        ),
+                    )
+                except ExtractionError as error:
+                    event = EventEnvelope(
+                        message_id=event_id,
+                        correlation_id=envelope.correlation_id,
+                        causation_id=envelope.message_id,
+                        message_type="fetch-channel-page-failed",
+                        occurred_at=datetime.now(timezone.utc),
+                        payload=FetchChannelPageFailedPayload(
+                            request_id=envelope.payload.request_id,
+                            channel_id=envelope.payload.channel_id,
+                            error_code=error.code,
+                            error_message=str(error),
+                            is_transient=error.transient,
+                        ),
+                    )
+                except Exception:
+                    logger.exception(
+                        "Unexpected channel page failure; message will be retried"
+                    )
+                    raise
+
+                await self._database.save_result(
+                    envelope.message_id,
+                    event_id,
+                    envelope.correlation_id,
+                    event.model_dump(mode="json", by_alias=True),
+                )
+                return
+
             try:
                 with tempfile.TemporaryDirectory(prefix="youtube-extractor-") as directory:
                     result = await self._extractor.extract(

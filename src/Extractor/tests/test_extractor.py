@@ -1,6 +1,13 @@
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+from uuid import uuid4
 
+import json
+
+from youtube_extractor.contracts import FetchChannelPagePayload
 from youtube_extractor.extractor import (
+    YtDlpExtractor,
     normalize_language,
     vtt_to_text,
     vtt_to_transcript,
@@ -77,3 +84,46 @@ strategy.
         "repeatable, and mechanical scalping",
         "strategy.",
     ]
+
+
+async def test_fetch_channel_page_reads_only_one_metadata_page(tmp_path: Path) -> None:
+    extractor = YtDlpExtractor(SimpleNamespace(process_timeout_seconds=30))
+    entries = [
+        {
+            "id": f"video{index:05d}",
+            "title": f"Video {index}",
+            "description": f"Description {index}",
+            "upload_date": f"2026110{index}",
+            "channel": "Example channel",
+            "uploader_id": "@ExampleTrades",
+            "thumbnails": [
+                {"url": f"https://img.example/{index}-small.jpg", "width": 120},
+                {"url": f"https://img.example/{index}-large.jpg", "width": 1280},
+            ],
+        }
+        for index in range(1, 4)
+    ]
+    extractor._run = AsyncMock(  # type: ignore[method-assign]
+        return_value="\n".join(json.dumps(entry) for entry in entries)
+    )
+    request = FetchChannelPagePayload(
+        request_id=uuid4(),
+        channel_id="UC_x5XG1OV2P6uZZ5FSM9Ttw",
+        start_index=1,
+        page_size=2,
+    )
+
+    page = await extractor.fetch_channel_page(request, tmp_path)
+
+    assert len(page.videos) == 2
+    assert page.has_more is True
+    assert page.next_start_index == 3
+    assert page.channel_name == "Example channel"
+    assert page.channel_handle == "ExampleTrades"
+    assert page.videos[0].description == "Description 1"
+    assert page.videos[0].thumbnail_url == "https://img.example/1-large.jpg"
+    args = extractor._run.await_args.args[0]  # type: ignore[attr-defined]
+    assert args[args.index("--playlist-start") + 1] == "1"
+    assert args[args.index("--playlist-end") + 1] == "3"
+    assert "--write-subs" not in args
+    assert "--write-thumbnail" not in args
