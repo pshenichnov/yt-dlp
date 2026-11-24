@@ -8,9 +8,22 @@ public sealed class ApiKeyMiddleware(RequestDelegate next)
 {
     public const string HeaderName = "X-Api-Key";
 
+    private static readonly HashSet<PathString> PublicUiPaths =
+    [
+        new("/"),
+        new("/index.html"),
+        new("/app.js"),
+        new("/styles.css"),
+        new("/status"),
+        new("/health.html"),
+        new("/health.js"),
+        new("/health.css")
+    ];
+
     public async Task InvokeAsync(HttpContext context, IOptions<PlatformOptions> options)
     {
-        if (context.Request.Path.StartsWithSegments("/health") ||
+        if (PublicUiPaths.Contains(context.Request.Path) ||
+            context.Request.Path.StartsWithSegments("/health", StringComparison.Ordinal) ||
             context.Request.Path.StartsWithSegments("/openapi") ||
             context.Request.Path.StartsWithSegments("/swagger"))
         {
