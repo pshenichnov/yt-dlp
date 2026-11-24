@@ -36,6 +36,12 @@ builder.Services.AddOpenApi(options =>
 builder.Services.AddPlatformObservability(builder.Configuration, "youtube-processing-api");
 builder.Services.AddDbContext<ApiDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("ApiDatabase")));
+builder.Services.AddHttpClient<YouTubeChannelResolver>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (compatible; YouTubeProcessing/1.0)");
+});
 
 builder.Services.AddSingleton<IAmazonS3>(services =>
 {

@@ -90,7 +90,7 @@ channelForm.addEventListener("submit", async (event) => {
   const channelId = channelIdInput.value.trim();
   const apiKey = apiKeyInput.value.trim();
   if (!channelId || !apiKey) {
-    showLibraryError("Enter a YouTube channel ID and your local API key.");
+    showLibraryError("Enter a YouTube channel URL, @handle, or channel ID and your local API key.");
     return;
   }
 
@@ -737,7 +737,8 @@ async function fetchJson(url, apiKey, options = {}) {
   let message = `Request failed with status ${response.status}.`;
   try {
     const problem = await response.json();
-    message = problem.title ?? problem.detail ?? message;
+    const validationMessages = Object.values(problem.errors ?? {}).flat();
+    message = validationMessages[0] ?? problem.detail ?? problem.title ?? message;
   } catch {
     // Keep the status-based message when the response is not JSON.
   }

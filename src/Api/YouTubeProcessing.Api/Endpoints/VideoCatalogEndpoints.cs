@@ -1,8 +1,8 @@
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using YouTubeProcessing.Api.Data;
+using YouTubeProcessing.Api.Infrastructure;
 using YouTubeProcessing.Contracts;
 
 namespace YouTubeProcessing.Api.Endpoints;
@@ -30,16 +30,19 @@ public static partial class VideoCatalogEndpoints
     private static async Task<IResult> AddChannel(
         AddChannelRequest request,
         ApiDbContext db,
+        YouTubeChannelResolver channelResolver,
         ISendEndpointProvider sender,
         CancellationToken cancellationToken)
     {
-        var channelId = request.ChannelId?.Trim() ?? string.Empty;
-        if (!YouTubeChannelId().IsMatch(channelId))
+        var channelId = await channelResolver.ResolveChannelId(
+            request.ChannelId,
+            cancellationToken);
+        if (channelId is null)
         {
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
                 [nameof(request.ChannelId)] =
-                    ["Enter a YouTube channel ID in the form UC followed by 22 letters, numbers, '-' or '_'."]
+                    ["Enter a valid YouTube channel URL, @handle, or channel ID."]
             });
         }
 
@@ -413,8 +416,6 @@ public static partial class VideoCatalogEndpoints
 
     private static int NormalizeOffset(int? offset) => Math.Max(offset ?? 0, 0);
 
-    [GeneratedRegex(@"^UC[A-Za-z0-9_-]{22}$", RegexOptions.CultureInvariant)]
-    private static partial Regex YouTubeChannelId();
 }
 
 public sealed record AddChannelRequest(string ChannelId);

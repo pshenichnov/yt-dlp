@@ -69,8 +69,8 @@ Poll the returned `statusUrl`; when it reports `completed`, request the
 `resultUrl`. Artifact links stream through the authenticated API.
 
 Completed jobs are retained in a video catalog. Channels can also be added by
-their YouTube channel ID; this stores metadata-only videos without starting a
-transcript or analysis job:
+their YouTube channel URL, `@handle`, or canonical `UC…` channel ID; this stores
+metadata-only videos without starting a transcript or analysis job:
 
 ```text
 GET /api/v1/videos
