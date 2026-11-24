@@ -42,3 +42,17 @@ jobs:
 
       - name: Validate Compose
         run: docker compose config --quiet
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install browser test dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Test browser health experience
+        run: npm run test:browser
