@@ -121,6 +121,10 @@ public sealed class ApiRoutingTests(ApiRoutingTests.ApiFactory factory)
             Directory.CreateDirectory(webRoot);
             base.ConfigureWebHost(builder);
             builder.UseWebRoot(webRoot);
+            // Prevent the development manifest from restoring source-tree assets
+            // when this fixture deliberately simulates an incomplete publish.
+            builder.UseSetting(WebHostDefaults.StaticWebAssetsKey,
+                Path.Combine(webRoot, "missing.staticwebassets.runtime.json"));
         }
 
         protected override void Dispose(bool disposing)

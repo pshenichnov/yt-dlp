@@ -84,7 +84,7 @@
     const timeout = setTimeout(() => controller.abort(), 10000);
     refreshButton.disabled = true; refreshButton.textContent = 'Refreshing…';
     try {
-      const response = await fetch('/health', { headers:{ Accept:'application/json' }, signal:controller.signal });
+      const response = await fetch('/health', { cache:'no-store', headers:{ Accept:'application/json' }, signal:controller.signal });
       if (response.status !== 200 && response.status !== 503) throw new Error(`Health endpoint returned HTTP ${response.status}.`);
       const report = await response.json();
       if (!report || typeof report !== 'object' || Array.isArray(report)) throw new Error('Health endpoint returned an invalid report.');

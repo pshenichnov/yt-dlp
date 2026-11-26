@@ -16,3 +16,8 @@ coverage/
 TestResults/
 .artifacts/
 .tmp/
+node_modules/
+test-results/
+playwright-report/
+.npm-cache/
+.playwright-browsers/
