@@ -99,6 +99,12 @@ the resulting thumbnail and description. The browser retains the API key only
 for the current tab. A saved channel can be opened directly by its handle or
 canonical ID, for example `/?channel-id=Emmanueltrades`.
 
+The home page links to the public application-health page at
+`http://localhost:8080/status`. It requests `GET /health` from the same origin,
+accepts both healthy HTTP 200 and unhealthy HTTP 503 reports, and can refresh
+automatically every 30 seconds. `GET /health.html` is retained as a compatibility
+address. Neither page requires an API key; protected business API routes do.
+
 `GET /health` returns aggregate status for the API, PostgreSQL, RabbitMQ,
 MinIO, Orchestrator, Extractor, and the optional Analyzer. Worker status is
 derived from the required RabbitMQ queues and active consumer connections; a

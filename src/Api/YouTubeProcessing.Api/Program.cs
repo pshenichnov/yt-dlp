@@ -170,6 +170,12 @@ app.UseSwaggerUI(options =>
 });
 
 app.MapOpenApi();
+app.MapGet("/status", (IWebHostEnvironment environment) =>
+        Results.File(
+            Path.Combine(environment.WebRootPath, "health.html"),
+            "text/html; charset=utf-8"))
+    .AllowAnonymous()
+    .ExcludeFromDescription();
 app.MapGet("/health", async (
         PlatformHealthService health,
         CancellationToken cancellationToken) =>

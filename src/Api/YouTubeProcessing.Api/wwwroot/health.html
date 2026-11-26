@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Current health of the Video Brief application and its dependencies.">
+  <title>Application health · Video Brief</title>
+  <link rel="stylesheet" href="/health.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Return to Video Brief">
+      <span class="brand-mark" aria-hidden="true">▶</span><span>Video Brief</span>
+    </a>
+    <a class="home-link" href="/">← Video library</a>
+  </header>
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">System status</p>
+      <h1 id="page-title">Application health</h1>
+      <p class="intro-copy">Live dependency and worker availability for this installation.</p>
+    </section>
+    <section class="summary" aria-labelledby="overall-heading">
+      <div>
+        <p class="eyebrow">Overall</p>
+        <h2 id="overall-heading"><span id="overall-dot" class="status-dot unknown" aria-hidden="true"></span><span id="overall-status" aria-live="polite">Loading…</span></h2>
+        <p id="checked-at" class="checked-at">Requesting the latest report.</p>
+      </div>
+      <div class="controls">
+        <label><input id="auto-refresh" type="checkbox" checked> Refresh every 30 seconds</label>
+        <button id="refresh" type="button">Refresh now</button>
+      </div>
+    </section>
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+    <section aria-labelledby="components-heading">
+      <h2 id="components-heading" class="visually-hidden">Components</h2>
+      <div id="components" class="component-grid" aria-live="polite"></div>
+    </section>
+  </main>
+  <footer>Health checks cover configured dependencies and connected workers, not an end-to-end job.</footer>
+  <script src="/health.js" defer></script>
+</body>
+</html>
